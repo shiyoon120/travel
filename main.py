@@ -1,10 +1,10 @@
-# 파일명: safetrip_v10_final_multilingual_complete.py
+# 파일명: safetrip_v11_final_map_pydeck_deduplication.py
 import streamlit as st
 import pandas as pd
 import datetime
-import pydeck as pdk # 사용하지 않지만 기존 코드에 있었으므로 남겨둡니다.
+import pydeck as pdk
 
-# --- 다국어 문자열 사전 (V10 기반) ---
+# --- 다국어 문자열 사전 (V11 기반) ---
 translations = {
     "ko": {
         "title": "✈️ SafeTrip",
@@ -38,9 +38,10 @@ translations = {
         "help_clear_record": "저장된 모든 여행 기록을 삭제합니다.",
         "map_coords_caption": "📍 현재 선택된 도시: ",
         "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다.",
+        "info_trip_duplicate": "🚨 이미 기록된 여행입니다. 새로운 여행을 검색해 주세요.",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v10)",
+        "title": "✈️ SafeTrip Full Version (v11)",
         "caption": "Travel schedule · Map · Latest issues · Emergency call link · Expanded countries/cities info",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
@@ -71,6 +72,7 @@ translations = {
         "help_clear_record": "Deletes all saved travel records.",
         "map_coords_caption": "📍 Selected City: ",
         "map_error_caption": "⚠️ Map coordinates are not available.",
+        "info_trip_duplicate": "🚨 This exact trip is already recorded. Please search for a new trip.",
     }
 }
 
@@ -190,16 +192,13 @@ def get_translated_data(country_ko, data_key, lang):
     info = safety_data.get(country_ko, {})
     data_source = info.get(f"{lang}_data", info.get("ko_data", {}))
     
-    # 데이터 키 매핑 (내부 데이터 딕셔너리 키)
     ko_key = {
         "risk_info": "위험 정보",
         "tips_info": "대처 요령",
         "recent_issues": "추가 이슈"
     }.get(data_key)
     
-    # 번역된 "정보 없음" 메시지 설정
     no_info_msg = "정보 없음" if lang == "ko" else "No information available"
-    
     return data_source.get(ko_key, [no_info_msg])
 
 # --- Google 검색 링크 생성 함수 ---
@@ -273,15 +272,36 @@ city_ko = get_country_ko_name(city_display_name, lang)
 
 
 if st.button(_["search_report"], type="primary"):
-    st.session_state.travel_history.append({
+    
+    # --- 📌 여행 기록 중복 제거 로직 ---
+    new_trip = {
         "국가": country_ko, "도시": city_ko, "출국일": departure, "귀국일": return_date
-    })
-    if country_ko not in st.session_state.checklist:
-        st.session_state.checklist[country_ko] = {item: False for item in checklist_items_ko}
-    st.session_state.selected_country_ko = country_ko
-    st.session_state.selected_city_ko = city_ko
-    st.session_state.report_on = True
-    st.rerun()
+    }
+    
+    # 이미 같은 여행 기록이 있는지 확인
+    is_duplicate = any(
+        trip["국가"] == new_trip["국가"] and 
+        trip["도시"] == new_trip["도시"] and 
+        trip["출국일"] == new_trip["출국일"] and 
+        trip["귀국일"] == new_trip["귀국일"] 
+        for trip in st.session_state.travel_history
+    )
+    
+    if is_duplicate:
+        st.warning(_["info_trip_duplicate"])
+        # 상태만 업데이트하고 rerun은 하지 않습니다.
+        st.session_state.selected_country_ko = country_ko
+        st.session_state.selected_city_ko = city_ko
+        st.session_state.report_on = True
+    else:
+        # 중복이 아니면 기록에 추가
+        st.session_state.travel_history.append(new_trip)
+        if country_ko not in st.session_state.checklist:
+            st.session_state.checklist[country_ko] = {item: False for item in checklist_items_ko}
+        st.session_state.selected_country_ko = country_ko
+        st.session_state.selected_city_ko = city_ko
+        st.session_state.report_on = True
+        st.rerun() # 새로운 여행일 경우 보고서 로드를 위해 새로고침
 
 # --- 보고서 표시 (st.tabs 사용) ---
 if st.session_state.report_on:
@@ -323,7 +343,7 @@ if st.session_state.report_on:
         st.markdown(f"**{_['call_emergency'].split(' ')[-2] if lang=='ko' else 'Emergency Phone Number'}:** `{phone_raw}`")
         st.markdown(f"[{_['call_emergency']}](tel:{phone})")
         st.markdown("---")
-        search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_display} 여행 안전 수칙"
+        search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_ko} 여행 안전 수칙"
         st.link_button(f"✅ {sel_country_display} {_['tips_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 3. 최근 위험 이슈 (tab3)
@@ -383,22 +403,38 @@ if st.session_state.report_on:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) - 지도 오류 수정 적용 ---
+    # --- 지도 섹션 (탭 외부) - 📌 st.pydeck_chart를 사용하여 지도 표시 오류 방지 ---
     st.subheader(_["map_section"])
     lat_lon = coords.get(sel_city_ko)
 
     if lat_lon:
         lat, lon = lat_lon
-        map_data = pd.DataFrame({"lat": [lat], "lon": [lon]})
+        map_data = pd.DataFrame([{'lat': lat, 'lon': lon}])
 
-        # st.map에 명시적 중심 좌표 및 zoom 레벨 지정 (지도 표시 오류 방지)
-        st.map(
-            map_data, 
-            latitude=lat, 
-            longitude=lon, 
-            zoom=11, 
-            use_container_width=True
+        # PyDeck ViewState 설정 (지도의 중심과 줌 레벨)
+        view_state = pdk.ViewState(
+            latitude=lat,
+            longitude=lon,
+            zoom=11, # 적절한 줌 레벨
+            pitch=50,
         )
+
+        # PyDeck ScatterplotLayer 설정 (도시 위치 표시)
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            map_data,
+            get_position="[lon, lat]",
+            get_color="[200, 30, 0, 160]", # 빨간색 마커
+            get_radius=5000, # 마커 크기 (미터 단위)
+            tooltip={"text": sel_city_display},
+        )
+        
+        st.pydeck_chart(pdk.Deck(
+            map_style='mapbox://styles/mapbox/light-v9', # 지도 스타일
+            initial_view_state=view_state,
+            layers=[layer],
+        ))
+        
         st.caption(f"{_['map_coords_caption']} {sel_city_display} (Coordinates: {lat:.4f}, {lon:.4f})")
     else:
         st.warning(_["map_error_caption"])
