@@ -1,4 +1,4 @@
-# 파일명: safetrip_v10_tabbed_final.py
+# 파일명: safetrip_v10_tabbed_final_map_restored.py
 import streamlit as st
 import pandas as pd
 import datetime
@@ -368,16 +368,16 @@ if st.session_state.report_on:
         )
 
 
-    # --- 지도 섹션 (탭 외부, V10 코드 기반) ---
+    # --- 지도 섹션 (탭 외부, V10 코드 기반 - 원래 위치로 복원) ---
     st.markdown("---")
     st.subheader(_["map_section"])
     lat, lon = coords.get(sel_city, (0, 0))
     st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
 
-# --- 여행 기록 테이블 (V10 코드 그대로) ---
-st.subheader(_["record_section"])
-record_label = _["record_section"]
-if st.session_state.travel_history:
-    st.dataframe(pd.DataFrame(st.session_state.travel_history))
-else:
-    st.info(f"{record_label}가/이 없습니다.")
+    # --- 여행 기록 테이블 (V10 코드 그대로) ---
+    st.subheader(_["record_section"])
+    record_label = _["record_section"]
+    if st.session_state.travel_history:
+        st.dataframe(pd.DataFrame(st.session_state.travel_history))
+    else:
+        st.info(f"{record_label}가/이 없습니다.")
