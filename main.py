@@ -7,7 +7,7 @@ import pydeck as pdk
 # --- 다국어 문자열 사전 (V10 기반) ---
 translations = {
     "ko": {
-        "title": "✈️ SafeTrip Full 버전 (v10) - 탭 & 검색 통합",
+        "title": "✈️ SafeTrip",
         "caption": "여행 일정표 · 지도 · 최신 이슈 · 긴급전화 링크 · 확대 국가/도시 정보 포함",
         "lang_select": "언어 선택",
         "travel_schedule": "📆 여행 일정 입력",
@@ -387,3 +387,6 @@ if st.session_state.report_on:
         st.dataframe(pd.DataFrame(st.session_state.travel_history))
     else:
         st.info(f"{record_label}가/이 없습니다.")
+
+st.markdown("—")
+st.markdown("© 2025 SafeTrip Assistant")
