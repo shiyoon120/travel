@@ -469,9 +469,11 @@ if st.session_state.report_on:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) ---
+   # --- 지도 섹션 (탭 외부) ---
     st.subheader(_["map_section"])
-    lat_lon = coords.get(sel_city_ko)
+    
+    # 📌 [수정된 로직 시작]: 세션 상태 대신 현재 선택된 도시 이름을 바로 사용
+    lat_lon = coords.get(city_ko)  # st.session_state.selected_city_ko 대신 city_ko 변수 사용
 
     if lat_lon:
         lat, lon = lat_lon
@@ -487,10 +489,12 @@ if st.session_state.report_on:
             zoom=11, 
             use_container_width=True
         )
-        st.caption(f"{_['map_coords_caption']} {sel_city_display} (Coordinates: {lat:.4f}, {lon:.4f})")
+        # 선택된 도시를 한 번 더 번역하여 표시 (최신 상태 반영)
+        sel_city_display_final = translate_name(city_ko, lang)
+        st.caption(f"{_['map_coords_caption']} {sel_city_display_final} (Coordinates: {lat:.4f}, {lon:.4f})")
     else:
-        st.warning(_["map_error_caption"])
-
+        # 좌표 정보가 없는 경우, 사용자에게 어떤 도시의 좌표가 없는지 명확히 안내
+        st.warning(f"⚠️ **{sel_city_display}** {_['map_error_caption']}")
     # --- 여행 기록 테이블 ---
     def clear_travel_history():
         st.session_state.travel_history = []
