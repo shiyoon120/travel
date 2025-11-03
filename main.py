@@ -1,4 +1,4 @@
-# 파일명: safetrip_v10_google_search.py
+# 파일명: safetrip_v10_full.py
 import streamlit as st
 import pandas as pd
 import datetime
@@ -7,7 +7,7 @@ import pydeck as pdk
 # --- 다국어 문자열 사전 ---
 translations = {
     "ko": {
-        "title": "✈️ SafeTrip Full 버전 (v10) - 검색 연동",
+        "title": "✈️ SafeTrip Full 버전 (v10)",
         "caption": "여행 일정표 · 지도 · 최신 이슈 · 긴급전화 링크 · 확대 국가/도시 정보 포함",
         "lang_select": "언어 선택",
         "travel_schedule": "📆 여행 일정 입력",
@@ -28,12 +28,9 @@ translations = {
         "checklist_section": "🧳 여행 전 필수 점검",
         "record_section": "📜 나의 여행 기록",
         "complete_success": "🎉 모든 준비 완료! 안전한 여행 되세요.",
-        "search_link": "Google에서 더 알아보기",
-        "map_section": "🗺️ 도시 지도",
-        "exchange_rate": "💱 환율 정보",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v10) - Search Integrated",
+        "title": "✈️ SafeTrip Full Version (v10)",
         "caption": "Travel schedule · Map · Latest issues · Emergency call link · Expanded countries/cities info",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
@@ -54,9 +51,6 @@ translations = {
         "checklist_section": "🧳 Pre‑Travel Checklist",
         "record_section": "📜 My Travel Records",
         "complete_success": "🎉 All set! Have a safe trip.",
-        "search_link": "Search on Google",
-        "map_section": "🗺️ City Map",
-        "exchange_rate": "💱 Exchange Rate Info",
     }
 }
 
@@ -152,33 +146,6 @@ exchange_rates = {
     "인도네시아": ("IDR", 11.56, "1원 ≈ 11.56루피아"),
 }
 
-# 지도 좌표 데이터
-coords = {
-    "서울": (37.5665, 126.9780), "부산": (35.1796, 129.0756), "제주": (33.4996, 126.5312),
-    "인천": (37.4563, 126.7052), "대구": (35.8714, 128.6014), "광주": (35.1595, 126.8526),
-    "울산": (35.5384, 129.3160), "도쿄": (35.6895, 139.6917), "오사카": (34.6937, 135.5023),
-    "후쿠오카": (33.5904, 130.4017), "삿포로": (43.0618, 141.3545), "교토": (35.0116, 135.7681),
-    "요코하마": (35.4437, 139.6380), "나고야": (35.1815, 136.9066), "방콕": (13.7563, 100.5018),
-    "푸켓": (7.9519, 98.3381), "치앙마이": (18.7883, 98.9853), "파타야": (12.9236, 100.8825),
-    "끄라비": (8.0350, 98.9063), "코사무이": (9.5120, 100.0134), "프놈펜": (11.5564, 104.9282),
-    "시엠립": (13.3633, 103.8618), "시아누크빌": (10.6260, 103.5130), "앙코르": (13.4125, 103.8667),
-    "바탐방": (13.1000, 103.2000), "뉴욕": (40.7128, -74.0060), "LA": (34.0522, -118.2437),
-    "샌프란시스코": (37.7749, -122.4194), "하와이": (21.3069, -157.8583), "시카고": (41.8781, -87.6298),
-    "런던": (51.5074, -0.1278), "맨체스터": (53.4808, -2.2426), "에든버러": (55.9533, -3.1883),
-    "리버풀": (53.4084, -2.9916), "시드니": (33.8688, 151.2093), "멜버른": (37.8136, 144.9631),
-    "브리즈번": (-27.4698, 153.0251), "퍼스": (-31.9505, 115.8605), "하노이": (21.0278, 105.8342),
-    "호찌민": (10.8231, 106.6297), "다낭": (16.0544, 108.2022), "나트랑": (12.2388, 109.1967),
-    "발리": (-8.3405, 115.0920), "자카르타": (-6.2088, 106.8456), "롬복": (-8.4095, 116.1572),
-    "욕야카르타": (-7.7956, 110.3695),
-}
-
-# --- Google 검색 링크 생성 함수 ---
-def create_google_search_link(query):
-    # URL 인코딩 대신, st.markdown에서 링크를 직접 생성하는 방식으로 구현
-    base_url = "https://www.google.com/search?q="
-    return base_url + query.replace(" ", "+")
-
-
 # --- 여행 일정표 입력 기능 ---
 st.subheader(_["travel_schedule"])
 departure = st.date_input(_["departure"], datetime.date.today())
@@ -198,18 +165,13 @@ if "checklist" not in st.session_state:
     st.session_state.checklist = {}
 if "report_on" not in st.session_state:
     st.session_state.report_on = False
-if "selected_country" not in st.session_state:
-    st.session_state.selected_country = list(safety_data.keys())[0]
-if "selected_city" not in st.session_state:
-    st.session_state.selected_city = safety_data[st.session_state.selected_country]["도시"][0]
-
 
 # --- 국가/도시 선택 ---
 col_country, col_city = st.columns(2)
 with col_country:
-    country = st.selectbox(_["country_select"], list(safety_data.keys()), key="country_select_box")
+    country = st.selectbox(_["country_select"], list(safety_data.keys()))
 with col_city:
-    city = st.selectbox(_["city_select"], safety_data[country]["도시"], key="city_select_box")
+    city = st.selectbox(_["city_select"], safety_data[country]["도시"])
 
 if st.button(_["search_report"], type="primary"):
     st.session_state.travel_history.append({
@@ -227,99 +189,124 @@ if st.button(_["search_report"], type="primary"):
     st.session_state.report_on = True
     st.rerun()
 
-# --- 보고서 표시 (Expander 사용) ---
+# --- 보고서 표시 ---
 if st.session_state.report_on:
     sel_country = st.session_state.selected_country
     sel_city = st.session_state.selected_city
     info = safety_data[sel_country]
 
     st.header(f"📋 {sel_country} – {sel_city}")
-    
-    # 1. 긴급 전화 및 환율
-    with st.expander(f"📞 {_['emergency_section']} & {_['exchange_rate']}", expanded=True):
-        col_call, col_rate = st.columns(2)
-        with col_call:
-            phone_raw = info["현지 연락처"]["긴급 전화"]
-            # 첫 번째 번호를 긴급 전화 링크로 사용
-            phone = phone_raw.split(" / ")[0]
-            st.markdown(f"**긴급 전화 번호:** `{phone_raw}`")
-            st.markdown(f"[{_['call_emergency']}](tel:{phone})")
-        with col_rate:
-            if sel_country in exchange_rates:
-                code, rate, text = exchange_rates[sel_country]
-                st.metric(_['exchange_rate'], text)
-            
-    st.markdown("---")
 
-    # 2. 도시 지도
-    with st.expander(_['map_section'], expanded=False):
-        lat, lon = coords.get(sel_city, (0, 0))
-        st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
-        search_query = f"{sel_country} {sel_city} 지도"
-        st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
+    # 긴급 전화 링크
+    phone = info["현지 연락처"]["긴급 전화"].split(" / ")[0]
+    st.markdown(f"[{_['call_emergency']}](tel:{phone})")
+
+    # 환율 표시
+    if sel_country in exchange_rates:
+        code, rate, text = exchange_rates[sel_country]
+        st.metric("💱 환율", text)
 
     st.markdown("---")
 
-    # 3. 주요 위험 및 유의사항
-    with st.expander(_["risk_info"], expanded=False):
-        for r in info["위험 정보"]:
-            st.warning(r)
-        search_query = f"{sel_country} 여행 위험 및 유의사항"
-        st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
+    # 지도 표시
+    coords = {
+        "서울": (37.5665, 126.9780),
+        "부산": (35.1796, 129.0756),
+        "제주": (33.4996, 126.5312),
+        "인천": (37.4563, 126.7052),
+        "대구": (35.8714, 128.6014),
+        "광주": (35.1595, 126.8526),
+        "울산": (35.5384, 129.3160),
+        "도쿄": (35.6895, 139.6917),
+        "오사카": (34.6937, 135.5023),
+        "후쿠오카": (33.5904, 130.4017),
+        "삿포로": (43.0618, 141.3545),
+        "교토": (35.0116, 135.7681),
+        "요코하마": (35.4437, 139.6380),
+        "나고야": (35.1815, 136.9066),
+        "방콕": (13.7563, 100.5018),
+        "푸켓": (7.9519, 98.3381),
+        "치앙마이": (18.7883, 98.9853),
+        "파타야": (12.9236, 100.8825),
+        "끄라비": (8.0350, 98.9063),
+        "코사무이": (9.5120, 100.0134),
+        "프놈펜": (11.5564, 104.9282),
+        "시엠립": (13.3633, 103.8618),
+        "시아누크빌": (10.6260, 103.5130),
+        "앙코르": (13.4125, 103.8667),
+        "바탐방": (13.1000, 103.2000),
+        "뉴욕": (40.7128, -74.0060),
+        "LA": (34.0522, -118.2437),
+        "샌프란시스코": (37.7749, -122.4194),
+        "하와이": (21.3069, -157.8583),
+        "시카고": (41.8781, -87.6298),
+        "런던": (51.5074, -0.1278),
+        "맨체스터": (53.4808, -2.2426),
+        "에든버러": (55.9533, -3.1883),
+        "리버풀": (53.4084, -2.9916),
+        "시드니": (33.8688, 151.2093),
+        "멜버른": (37.8136, 144.9631),
+        "브리즈번": (-27.4698, 153.0251),
+        "퍼스": (-31.9505, 115.8605),
+        "하노이": (21.0278, 105.8342),
+        "호찌민": (10.8231, 106.6297),
+        "다낭": (16.0544, 108.2022),
+        "나트랑": (12.2388, 109.1967),
+        "발리": (-8.3405, 115.0920),
+        "자카르타": (-6.2088, 106.8456),
+        "롬복": (-8.4095, 116.1572),
+        "욕야카르타": (-7.7956, 110.3695),
+    }
+    lat, lon = coords.get(sel_city, (0, 0))
+    st.subheader(_["city_select"])
+    st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
 
-    # 4. 대처 요령
-    with st.expander(_["tips_info"], expanded=False):
-        for t in info["대처 요령"]:
-            st.success(t)
-        search_query = f"{sel_country} 여행 안전 수칙"
-        st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
-
-    # 5. 최근 위험 이슈
-    with st.expander(_["recent_issues"], expanded=False):
-        for issue in info.get("추가 이슈", []):
-            st.info(issue)
-        search_query = f"{sel_country} {sel_city} 여행 최신 이슈"
-        st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
-    
     st.markdown("---")
 
-    # 6. 여행 전 필수 점검
-    with st.expander(_["checklist_section"], expanded=True):
-        checklist = st.session_state.checklist[sel_country]
-        for item in checklist.keys():
-            checklist[item] = st.checkbox(item, checklist[item], key=f"{sel_country}_{item}")
-        done = sum(checklist.values())
-        total = len(checklist)
-        if done < total:
-            st.warning(f"⚠️ {done}/{total} {_["checklist_section"]}")
-        else:
-            st.success(_["complete_success"])
-        search_query = f"{sel_country} 여행 준비물 체크리스트"
-        st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
+    st.subheader(_["risk_info"])
+    for r in info["위험 정보"]:
+        st.warning(r)
 
+    st.subheader(_["tips_info"])
+    for t in info["대처 요령"]:
+        st.success(t)
+
+    st.subheader(_["recent_issues"])
+    for issue in info.get("추가 이슈", []):
+        st.info(issue)
 
     st.markdown("---")
 
-    # 7. 응급 상황 대처 추가 섹션
-    with st.expander(_["emergency_section"], expanded=True):
-        emergency_types = {
-            "earthquake": "Earthquake / 지진",
-            "crime": "Crime / 범죄",
-            "medical": "Medical Emergency / 의료 긴급"
-        }
-        sel_em_key = st.selectbox(_["emergency_select"], list(emergency_types.values()), key="sel_emergency")
-        advice_map = {
-            "earthquake": "지진 발생 시 구조된 지진대피소로 즉시 이동하세요. / In case of earthquake, move to a designated safe shelter immediately.",
-            "crime": "주변에 인적이 드물거나 불안한 곳이라면 즉시 밝은 조명과 사람이 많은 공간으로 이동하세요. / If you are in an area with high crime risk, move to a well‑lit, populated area immediately.",
-            "medical": "긴급 병원이나 응급실로 이동하고, 대사관/영사관 연락처도 확인하세요. / Move to the nearest emergency hospital and contact your embassy/consulate."
-        }
-        # key 매핑 및 검색 링크 추가
-        for key in advice_map.keys():
-            if emergency_types[key] == sel_em_key:
-                st.info(_["emergency_advice_prefix"] + advice_map[key])
-                search_query = f"{sel_country} {emergency_types[key].split(' / ')[-1]} 대처 요령"
-                st.markdown(f"[[{_['search_link']}]({create_google_search_link(search_query)})](target='_blank')")
-                break
+    st.subheader(_["checklist_section"])
+    checklist = st.session_state.checklist[sel_country]
+    for item in checklist.keys():
+        checklist[item] = st.checkbox(item, checklist[item], key=f"{sel_country}_{item}")
+    done = sum(checklist.values())
+    total = len(checklist)
+    if done < total:
+        st.warning(f"⚠️ {done}/{total} {_["checklist_section"]}")
+    else:
+        st.success(_["complete_success"])
+
+    st.markdown("---")
+
+    # --- 응급 상황 대처 추가 섹션 ---
+    st.subheader(_["emergency_section"])
+    emergency_types = {
+        "earthquake": "Earthquake / 지진",
+        "crime": "Crime / 범죄",
+        "medical": "Medical Emergency / 의료 긴급"
+    }
+    sel_em_key = st.selectbox(_["emergency_select"], list(emergency_types.values()), key="sel_emergency")
+    advice_map = {
+        "earthquake": "지진 발생 시 구조된 지진대피소로 즉시 이동하세요. / In case of earthquake, move to a designated safe shelter immediately.",
+        "crime": "주변에 인적이 드물거나 불안한 곳이라면 즉시 밝은 조명과 사람이 많은 공간으로 이동하세요. / If you are in an area with high crime risk, move to a well‑lit, populated area immediately.",
+        "medical": "긴급 병원이나 응급실로 이동하고, 대사관/영사관 연락처도 확인하세요. / Move to the nearest emergency hospital and contact your embassy/consulate."
+    }
+    # key 매핑
+    for key in advice_map.keys():
+        if emergency_types[key] == sel_em_key:
+            st.info(_["emergency_advice_prefix"] + advice_map[key])
 
 # --- 여행 기록 테이블 ---
 st.subheader(_["record_section"])
@@ -328,3 +315,4 @@ if st.session_state.travel_history:
     st.dataframe(pd.DataFrame(st.session_state.travel_history))
 else:
     st.info(f"{record_label}가/이 없습니다.")
+
