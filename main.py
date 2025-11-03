@@ -1,4 +1,4 @@
-# 파일명: safetrip_v10_tabbed_final_map_restored.py
+# 파일명: safetrip_v10_tabbed_final_rate_separated.py
 import streamlit as st
 import pandas as pd
 import datetime
@@ -270,18 +270,15 @@ if st.session_state.report_on:
         for t in info.get("대처 요령", ["정보 없음"]):
             st.success(t)
         
-        # 긴급 전화 및 환율 정보 추가
+        # 긴급 전화 정보만 유지
         st.markdown("---")
-        col_call, col_rate = st.columns(2)
+        col_call = st.columns(1)[0] # 환율 정보 제거 후 1컬럼으로 변경
         with col_call:
             phone_raw = info["현지 연락처"]["긴급 전화"]
             phone = phone_raw.split(" / ")[0]
             st.markdown(f"**긴급 전화 번호:** `{phone_raw}`")
             st.markdown(f"[{_['call_emergency']}](tel:{phone})")
-        with col_rate:
-            if sel_country in exchange_rates:
-                code, rate, text = exchange_rates[sel_country]
-                st.metric(_['exchange_rate'], text)
+        # col_rate: 환율 정보가 있던 컬럼 제거
             
         st.markdown("---")
         search_query = f"{sel_country} 여행 대처 요령"
@@ -368,8 +365,17 @@ if st.session_state.report_on:
         )
 
 
-    # --- 지도 섹션 (탭 외부, V10 코드 기반 - 원래 위치로 복원) ---
+    # --- 환율 정보 섹션 (탭 외부로 분리) ---
     st.markdown("---")
+    st.subheader(_["exchange_rate"])
+    if sel_country in exchange_rates:
+        code, rate, text = exchange_rates[sel_country]
+        st.metric(f"{sel_country} ({code}) 환율 정보", text)
+    else:
+        st.info("해당 국가의 환율 정보가 없습니다.")
+    st.markdown("---")
+
+    # --- 지도 섹션 (탭 외부, V10 코드 기반 - 원래 위치로 복원) ---
     st.subheader(_["map_section"])
     lat, lon = coords.get(sel_city, (0, 0))
     st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
