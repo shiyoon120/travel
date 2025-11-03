@@ -1,10 +1,10 @@
-# 파일명: safetrip_v11_final_map_pydeck_deduplication.py
+# 파일명: safetrip_v12_final_stmap_restored_deduplication.py
 import streamlit as st
 import pandas as pd
 import datetime
-import pydeck as pdk
+import pydeck as pdk # 이제 사용하지 않지만 Streamlit의 기본 기능을 위해 import는 유지
 
-# --- 다국어 문자열 사전 (V11 기반) ---
+# --- 다국어 문자열 사전 (V12 기반) ---
 translations = {
     "ko": {
         "title": "✈️ SafeTrip",
@@ -37,11 +37,11 @@ translations = {
         "btn_clear_record": "🗑️ 나의 여행 기록 초기화",
         "help_clear_record": "저장된 모든 여행 기록을 삭제합니다.",
         "map_coords_caption": "📍 현재 선택된 도시: ",
-        "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다.",
+        "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다. (참고: 영어 모드에서 지도가 보이지 않을 수 있습니다.)",
         "info_trip_duplicate": "🚨 이미 기록된 여행입니다. 새로운 여행을 검색해 주세요.",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v11)",
+        "title": "✈️ SafeTrip Full Version (v12)",
         "caption": "Travel schedule · Map · Latest issues · Emergency call link · Expanded countries/cities info",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
@@ -71,7 +71,7 @@ translations = {
         "btn_clear_record": "🗑️ Clear My Travel Records",
         "help_clear_record": "Deletes all saved travel records.",
         "map_coords_caption": "📍 Selected City: ",
-        "map_error_caption": "⚠️ Map coordinates are not available.",
+        "map_error_caption": "⚠️ Map coordinates are not available. (Note: The map may not be visible in English mode.)",
         "info_trip_duplicate": "🚨 This exact trip is already recorded. Please search for a new trip.",
     }
 }
@@ -163,7 +163,7 @@ coords = {
     "욕야카르타": (-7.7956, 110.3695),
 }
 
-# --- 다국어 처리 함수 ---
+# --- 다국어 처리 함수 (이전과 동일) ---
 def translate_name(name, lang):
     if lang == "en":
         return country_city_translations.get(name, name)
@@ -352,7 +352,7 @@ if st.session_state.report_on:
         issues = get_translated_data(sel_country_ko, "recent_issues", lang)
         for issue in issues: st.info(issue)
         st.markdown("---")
-        search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_display} 최근 이슈"
+        search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_ko} 최근 이슈"
         st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 4. 응급 상황 대처 (tab4)
@@ -403,38 +403,23 @@ if st.session_state.report_on:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) - 📌 st.pydeck_chart를 사용하여 지도 표시 오류 방지 ---
+    # --- 지도 섹션 (탭 외부) - 📌 st.map 복원 ---
     st.subheader(_["map_section"])
     lat_lon = coords.get(sel_city_ko)
 
     if lat_lon:
         lat, lon = lat_lon
-        map_data = pd.DataFrame([{'lat': lat, 'lon': lon}])
+        map_data = pd.DataFrame({"lat": [lat], "lon": [lon]})
 
-        # PyDeck ViewState 설정 (지도의 중심과 줌 레벨)
-        view_state = pdk.ViewState(
-            latitude=lat,
-            longitude=lon,
-            zoom=11, # 적절한 줌 레벨
-            pitch=50,
+        # st.map 복원 및 zoom 레벨 지정 (이전에 원하셨던 스타일입니다.)
+        # 참고: 영어 모드에서 지도가 보이지 않는 문제가 재발할 수 있습니다.
+        st.map(
+            map_data, 
+            latitude=lat, 
+            longitude=lon, 
+            zoom=11, 
+            use_container_width=True
         )
-
-        # PyDeck ScatterplotLayer 설정 (도시 위치 표시)
-        layer = pdk.Layer(
-            "ScatterplotLayer",
-            map_data,
-            get_position="[lon, lat]",
-            get_color="[200, 30, 0, 160]", # 빨간색 마커
-            get_radius=5000, # 마커 크기 (미터 단위)
-            tooltip={"text": sel_city_display},
-        )
-        
-        st.pydeck_chart(pdk.Deck(
-            map_style='mapbox://styles/mapbox/light-v9', # 지도 스타일
-            initial_view_state=view_state,
-            layers=[layer],
-        ))
-        
         st.caption(f"{_['map_coords_caption']} {sel_city_display} (Coordinates: {lat:.4f}, {lon:.4f})")
     else:
         st.warning(_["map_error_caption"])
