@@ -47,7 +47,7 @@ translations = {
         "phrase_hospital": "병원",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version",
+        "title": "✈️ SafeTrip",
         "caption": "Travel schedule · Map · Latest issues · Emergency contacts · Local response included",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
