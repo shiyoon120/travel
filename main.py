@@ -1,4 +1,4 @@
-# 파일명: main.py (SafeTrip 최종 통합 및 지도 안정화 버전)
+# 파일명: main.py (최종 안정화 버전)
 import streamlit as st
 import pandas as pd
 import datetime
@@ -174,6 +174,7 @@ exchange_rates = {
     "캄보디아": ("KHR", 2.83, "1원 ≈ 2.83리엘"), "미국": ("USD", 1/1420, "1원 ≈ 0.00070달러"), "영국": ("GBP", 1/1800, "1원 ≈ 0.00056파운드"),
     "호주": ("AUD", 1/930, "1원 ≈ 0.00108호주달러"), "베트남": ("VND", 18.86, "1원 ≈ 18.86동"), "인도네시아": ("IDR", 11.56, "1원 ≈ 11.56루피아"),
 }
+# ⚠️ 주의: coords 딕셔너리의 키는 모두 '한국어'입니다. 
 coords = {
     "서울": (37.5665, 126.9780), "부산": (35.1796, 129.0756), "제주": (33.4996, 126.5312),
     "인천": (37.4563, 126.7052), "대구": (35.8714, 128.6014), "광주": (35.1595, 126.8526),
@@ -214,9 +215,13 @@ def get_country_ko_name(country_display_name, lang):
     if lang == "ko":
         return country_display_name
     for ko_name, en_name in country_city_translations.items():
+        # 국가 이름 검색 (safety_data 키에 포함되어야 함)
         if en_name == country_display_name and ko_name in safety_data.keys():
             return ko_name
-    return country_display_name
+        # 도시 이름 검색 (coords 키에 포함되어야 함)
+        if en_name == country_display_name and ko_name in coords.keys():
+            return ko_name
+    return country_display_name # 번역을 찾지 못하면 입력된 이름을 반환 (ko_name 또는 en_name)
 
 def get_translated_data(country_ko, data_key, lang):
     info = safety_data.get(country_ko, {})
@@ -243,13 +248,17 @@ def create_google_search_link(query):
 st.set_page_config(page_title="✈️ SafeTrip", page_icon="✈️", layout="wide")
 
 # --- 📌 지도 안정화를 위한 언어 선택/Rerun 로직 (최상단) ---
-current_lang_option = "한국어" if "current_lang" not in st.session_state else st.session_state.current_lang
-lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), index=(0 if current_lang_option == "한국어" else 1), key="lang_choice_selectbox")
+# 세션 상태가 없으면 한국어로 시작
+if "current_lang" not in st.session_state: st.session_state.current_lang = "한국어"
+current_lang_option = st.session_state.current_lang
+
+lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), 
+                           index=(0 if current_lang_option == "한국어" else 1), 
+                           key="lang_choice_selectbox")
 
 # 언어 선택 변경 감지 및 강제 RERUN
-if lang_option != st.session_state.get('current_lang', '한국어'):
+if lang_option != st.session_state.current_lang:
     st.session_state.current_lang = lang_option
-    # st.rerun() 대신 st.experimental_rerun()을 사용하여 더 강제적인 새로고침을 시도할 수도 있습니다.
     st.rerun()
 
 lang = "ko" if lang_option == "한국어" else "en"
@@ -281,9 +290,10 @@ checklist_items_en = ["Passport/Visa Check", "Insurance Enrollment", "Save Emerg
 if "travel_history" not in st.session_state: st.session_state.travel_history = []
 if "checklist" not in st.session_state: st.session_state.checklist = {} 
 if "report_on" not in st.session_state: st.session_state.report_on = False
+
+# 초기 기본값 설정
 if "selected_country_ko" not in st.session_state:
-    default_country = list(safety_data.keys())[0]
-    st.session_state.selected_country_ko = default_country
+    st.session_state.selected_country_ko = list(safety_data.keys())[0]
 if "selected_city_ko" not in st.session_state:
     st.session_state.selected_city_ko = safety_data[st.session_state.selected_country_ko]["도시"][0]
 
@@ -297,6 +307,7 @@ default_country_index = country_names.index(default_country_display) if default_
 
 with col_country:
     country_display_name = st.selectbox(_["country_select"], country_names, index=default_country_index, key="country_select_box")
+# 📌 선택된 국가를 한국어 이름으로 변환 (데이터 접근 키)
 country_ko = get_country_ko_name(country_display_name, lang) 
 
 city_names = get_city_name_list(country_ko, lang)
@@ -305,6 +316,7 @@ default_city_index = city_names.index(default_city_display) if default_city_disp
 
 with col_city:
     city_display_name = st.selectbox(_["city_select"], city_names, index=default_city_index, key="city_select_box")
+# 📌 선택된 도시를 한국어 이름으로 변환 (데이터 접근 및 지도 검색 키)
 city_ko = get_country_ko_name(city_display_name, lang) 
 
 
@@ -325,28 +337,29 @@ if st.button(_["search_report"], type="primary"):
     
     if is_duplicate:
         st.warning(_["info_trip_duplicate"])
-        st.session_state.selected_country_ko = country_ko
-        st.session_state.selected_city_ko = city_ko
-        st.session_state.report_on = True
-    else:
+    
+    # 📌 세션 상태 갱신: 보고서가 켜지면 현재 선택된 한국어 이름으로 세션 상태를 업데이트
+    st.session_state.selected_country_ko = country_ko
+    st.session_state.selected_city_ko = city_ko
+    st.session_state.report_on = True
+    
+    if not is_duplicate:
         st.session_state.travel_history.append(new_trip)
         if country_ko not in st.session_state.checklist:
             st.session_state.checklist[country_ko] = {item: False for item in checklist_items_ko}
-        st.session_state.selected_country_ko = country_ko
-        st.session_state.selected_city_ko = city_ko
-        st.session_state.report_on = True
-        st.rerun() 
+        st.rerun() # 변경 후 새로고침 (Rerun)을 다시 한번 강제
 
 # --- 보고서 표시 (st.tabs 사용) ---
 if st.session_state.report_on:
-    sel_country_ko = st.session_state.selected_country_ko
-    # 📌 sel_city_ko 대신, 보고서와 지도에 사용할 최신 선택 도시 변수 city_ko를 사용합니다.
-    # sel_city_ko는 세션 상태의 이전 값을 참조할 수 있기 때문입니다.
     
-    sel_country_display = translate_name(country_ko, lang)
-    sel_city_display = translate_name(city_ko, lang)
+    # 📌 보고서 및 지도에 사용할 최종 이름 정의
+    sel_country_ko = country_ko # 현재 선택된 한국어 국가 이름
+    sel_city_ko = city_ko       # 현재 선택된 한국어 도시 이름
     
-    info = safety_data.get(country_ko, {})
+    sel_country_display = translate_name(sel_country_ko, lang)
+    sel_city_display = translate_name(sel_city_ko, lang)
+    
+    info = safety_data.get(sel_country_ko, {})
     local_contacts = info.get("현지 연락처", {})
     local_phrases = info.get("현지어", {})
 
@@ -363,7 +376,7 @@ if st.session_state.report_on:
     # 1. 주요 위험 및 유의사항 (tab1)
     with tab1:
         st.subheader(_["risk_info"])
-        risks = get_translated_data(country_ko, "risk_info", lang)
+        risks = get_translated_data(sel_country_ko, "risk_info", lang)
         for r in risks: st.warning(r)
         st.markdown("---")
         search_query = f"{sel_country_display} {sel_city_display} Travel Risk" if lang=="en" else f"{sel_country_display} {sel_city_display} 여행 위험"
@@ -372,19 +385,19 @@ if st.session_state.report_on:
     # 2. 대처 요령 (tab2)
     with tab2:
         st.subheader(_["tips_info"])
-        tips = get_translated_data(country_ko, "tips_info", lang)
+        tips = get_translated_data(sel_country_ko, "tips_info", lang)
         for t in tips: st.success(t)
         st.markdown("---")
-        search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{country_ko} 여행 안전 수칙"
+        search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_ko} 여행 안전 수칙"
         st.link_button(f"✅ {sel_country_display} {_['tips_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 3. 최근 위험 이슈 (tab3)
     with tab3:
         st.subheader(_["recent_issues"])
-        issues = get_translated_data(country_ko, "recent_issues", lang)
+        issues = get_translated_data(sel_country_ko, "recent_issues", lang)
         for issue in issues: st.info(issue)
         st.markdown("---")
-        search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {city_ko} 최근 이슈"
+        search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_ko} 최근 이슈"
         st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 4. 긴급 연락처 및 대처 (tab4)
@@ -415,7 +428,7 @@ if st.session_state.report_on:
         st.markdown("---")
         
         # 4-3. 병원 검색 링크 
-        search_query_hospital = f"{sel_city_display} Major Hospital Emergency" if lang=="en" else f"{city_ko} 주요 병원 응급실"
+        search_query_hospital = f"{sel_city_display} Major Hospital Emergency" if lang=="en" else f"{sel_city_ko} 주요 병원 응급실"
         major_hospitals_text_only = _['major_hospitals'].replace('🏥', '').strip()
         search_button_label = f"🏥 {major_hospitals_text_only}: {_['search_link_btn']}"
         st.link_button(search_button_label, create_google_search_link(search_query_hospital), use_container_width=True)
@@ -439,16 +452,15 @@ if st.session_state.report_on:
     # 5. 여행 전 필수 점검 (tab5)
     with tab5:
         st.subheader(_["checklist_section"])
-        checklist = st.session_state.checklist.get(country_ko, {item: False for item in checklist_items_ko})
+        checklist = st.session_state.checklist.get(sel_country_ko, {item: False for item in checklist_items_ko})
         
         new_checklist_status = {}
         for idx, ko_item in enumerate(checklist_items_ko):
             display_item = ko_item if lang == "ko" else checklist_items_en[idx]
-            # 📌 키를 country_ko로 사용 (보고서의 최신 상태 반영)
-            is_checked = st.checkbox(display_item, checklist.get(ko_item, False), key=f"{country_ko}_{ko_item}")
+            is_checked = st.checkbox(display_item, checklist.get(ko_item, False), key=f"{sel_country_ko}_{ko_item}")
             new_checklist_status[ko_item] = is_checked
         
-        st.session_state.checklist[country_ko] = new_checklist_status
+        st.session_state.checklist[sel_country_ko] = new_checklist_status
         
         done = sum(new_checklist_status.values())
         total = len(new_checklist_status)
@@ -465,8 +477,8 @@ if st.session_state.report_on:
     # --- 환율 정보 섹션 (탭 외부) ---
     st.markdown("---")
     st.subheader(_["exchange_rate"])
-    if country_ko in exchange_rates:
-        code, rate, text = exchange_rates[country_ko]
+    if sel_country_ko in exchange_rates:
+        code, rate, text = exchange_rates[sel_country_ko]
         st.metric(f"{sel_country_display} ({code}) {_['exchange_rate'].split(' ')[-2 if lang=='ko' else 0] if lang=='ko' else 'Exchange Rate Info'}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
     else:
         st.info(_["info_exchange_rate"])
@@ -474,8 +486,8 @@ if st.session_state.report_on:
 
     # --- 🗺️ 지도 섹션 (최종 안정화 적용) ---
     st.subheader(_["map_section"])
-    # 📌 최신 선택 도시 변수 city_ko 사용
-    lat_lon = coords.get(city_ko)  
+    # 📌 한국어 이름(sel_city_ko)을 사용하여 좌표 검색
+    lat_lon = coords.get(sel_city_ko)  
 
     if lat_lon:
         lat, lon = lat_lon
