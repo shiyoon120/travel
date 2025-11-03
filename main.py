@@ -1,8 +1,8 @@
-# 파일명: main.py (SafeTrip 최종 통합 버전)
+# 파일명: main.py (SafeTrip 최종 통합 및 지도 안정화 버전)
 import streamlit as st
 import pandas as pd
 import datetime
-import pydeck as pdk # Pydeck은 st.map을 위해 import는 유지합니다.
+import pydeck as pdk 
 
 # --- 다국어 문자열 사전 (최종 버전) ---
 translations = {
@@ -88,7 +88,7 @@ translations = {
     }
 }
 
-# --- 나라/도시 이름 번역 딕셔너리 (이전과 동일) ---
+# --- 나라/도시 이름 번역 딕셔너리 ---
 country_city_translations = {
     "한국": "South Korea", "서울": "Seoul", "부산": "Busan", "제주": "Jeju", "인천": "Incheon", "대구": "Daegu", "광주": "Gwangju", "울산": "Ulsan",
     "일본": "Japan", "도쿄": "Tokyo", "오사카": "Osaka", "후쿠오카": "Fukuoka", "삿포로": "Sapporo", "교토": "Kyoto", "요코하마": "Yokohama", "나고야": "Nagoya",
@@ -101,7 +101,7 @@ country_city_translations = {
     "인도네시아": "Indonesia", "발리": "Bali", "자카르타": "Jakarta", "롬복": "Lombok", "욕야카르타": "Yogyakarta",
 }
 
-# --- 다국어 데이터 포함 (긴급 연락처, 병원, 현지어 추가) ---
+# --- 다국어 데이터 포함 ---
 safety_data = {
     "한국": {
         "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"], 
@@ -240,16 +240,24 @@ def create_google_search_link(query):
 # --- Streamlit UI 시작 ---
 # ------------------------------------------------------------------------------------------------------
 
-# 언어 선택 및 전역 변수 설정
-lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), key="lang_choice")
+st.set_page_config(page_title="✈️ SafeTrip", page_icon="✈️", layout="wide")
+
+# --- 📌 지도 안정화를 위한 언어 선택/Rerun 로직 (최상단) ---
+current_lang_option = "한국어" if "current_lang" not in st.session_state else st.session_state.current_lang
+lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), index=(0 if current_lang_option == "한국어" else 1), key="lang_choice_selectbox")
+
+# 언어 선택 변경 감지 및 강제 RERUN
+if lang_option != st.session_state.get('current_lang', '한국어'):
+    st.session_state.current_lang = lang_option
+    st.rerun()
+
 lang = "ko" if lang_option == "한국어" else "en"
 _ = translations[lang]
 
-st.set_page_config(page_title=_["title"], page_icon="✈️", layout="wide")
-
+# ----------------------------------------------------------
+# --- UI 타이틀 ---
 st.title(_["title"])
 st.caption(_["caption"])
-
 st.markdown("---")
 
 # --- 여행 일정표 입력 기능 ---
@@ -269,14 +277,10 @@ st.markdown("---")
 checklist_items_ko = ["여권/비자 확인", "보험 가입", "비상연락망 저장", "신용카드 분실 신고처 메모"]
 checklist_items_en = ["Passport/Visa Check", "Insurance Enrollment", "Save Emergency Contacts", "Note Credit Card Loss Reporting"]
 
-if "travel_history" not in st.session_state:
-    st.session_state.travel_history = []
-if "checklist" not in st.session_state:
-    st.session_state.checklist = {} 
-if "report_on" not in st.session_state:
-    st.session_state.report_on = False
+if "travel_history" not in st.session_state: st.session_state.travel_history = []
+if "checklist" not in st.session_state: st.session_state.checklist = {} 
+if "report_on" not in st.session_state: st.session_state.report_on = False
 if "selected_country_ko" not in st.session_state:
-    # 안전하게 기본 국가 설정
     default_country = list(safety_data.keys())[0]
     st.session_state.selected_country_ko = default_country
 if "selected_city_ko" not in st.session_state:
@@ -310,7 +314,6 @@ if st.button(_["search_report"], type="primary"):
         "국가": country_ko, "도시": city_ko, "출국일": departure, "귀국일": return_date
     }
     
-    # 이미 같은 여행 기록이 있는지 확인
     is_duplicate = any(
         trip["국가"] == new_trip["국가"] and 
         trip["도시"] == new_trip["도시"] and 
@@ -325,7 +328,6 @@ if st.button(_["search_report"], type="primary"):
         st.session_state.selected_city_ko = city_ko
         st.session_state.report_on = True
     else:
-        # 중복이 아니면 기록에 추가
         st.session_state.travel_history.append(new_trip)
         if country_ko not in st.session_state.checklist:
             st.session_state.checklist[country_ko] = {item: False for item in checklist_items_ko}
@@ -383,9 +385,9 @@ if st.session_state.report_on:
         search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_ko} 최근 이슈"
         st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
-    # 4. 긴급 연락처 및 대처 (tab4) - 최종 수정 적용
+    # 4. 긴급 연락처 및 대처 (tab4)
     with tab4:
-        # 4-1. 긴급 전화 (가장 크게 강조)
+        # 4-1. 긴급 전화 
         phone_raw = local_contacts.get("긴급 전화", "정보 없음 / No Info")
         phone = phone_raw.split(" / ")[0]
         
@@ -410,7 +412,7 @@ if st.session_state.report_on:
         
         st.markdown("---")
         
-        # 4-3. 병원 검색 링크 (번역 수정 완료)
+        # 4-3. 병원 검색 링크 
         search_query_hospital = f"{sel_city_display} Major Hospital Emergency" if lang=="en" else f"{sel_city_ko} 주요 병원 응급실"
         major_hospitals_text_only = _['major_hospitals'].replace('🏥', '').strip()
         search_button_label = f"🏥 {major_hospitals_text_only}: {_['search_link_btn']}"
@@ -467,14 +469,14 @@ if st.session_state.report_on:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) - st.map 안정화 및 복원 완료 ---
+    # --- 지도 섹션 (탭 외부) ---
     st.subheader(_["map_section"])
     lat_lon = coords.get(sel_city_ko)
 
     if lat_lon:
         lat, lon = lat_lon
         
-        # 지도의 렌더링 안정화를 위해 DataFrame만 전달하는 방식으로 변경 (st.map 유지)
+        # 지도의 렌더링 안정화를 위해 DataFrame만 전달하는 방식으로 유지
         map_data = pd.DataFrame({
             "latitude": [lat], 
             "longitude": [lon]
