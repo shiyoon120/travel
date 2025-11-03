@@ -1,14 +1,14 @@
-# 파일명: safetrip_v12_final_stmap_restored_deduplication.py
+# 파일명: safetrip_v13_final_stmap_enhanced_emergency.py
 import streamlit as st
 import pandas as pd
 import datetime
 import pydeck as pdk # 이제 사용하지 않지만 Streamlit의 기본 기능을 위해 import는 유지
 
-# --- 다국어 문자열 사전 (V12 기반) ---
+# --- 다국어 문자열 사전 (V13 기반 - 응급 섹션 강화) ---
 translations = {
     "ko": {
         "title": "✈️ SafeTrip",
-        "caption": "여행 일정표 · 지도 · 최신 이슈 · 긴급전화 링크 · 확대 국가/도시 정보 포함",
+        "caption": "여행 일정표 · 지도 · 최신 이슈 · 긴급연락처 · 현지 대처법 포함",
         "lang_select": "언어 선택",
         "travel_schedule": "📆 여행 일정 입력",
         "departure": "출국일",
@@ -18,10 +18,10 @@ translations = {
         "country_select": "🌍 국가 선택",
         "city_select": "🏙️ 도시 선택",
         "search_report": "🔍 안전 보고서 보기",
-        "emergency_section": "🚨 응급 상황 대처",
+        "emergency_section": "🚨 긴급 연락처 및 대처", # 이름 변경
         "call_emergency": "📞 긴급전화 걸기",
         "risk_info": "⚠️ 주요 위험 및 유의사항",
-        "tips_info": "✅ 대처 요령",
+        "tips_info": "✅ 대처 요령", # 긴급 전화 내용 삭제
         "recent_issues": "📰 최근 위험 이슈",
         "checklist_section": "🧳 여행 전 필수 점검",
         "record_section": "📜 나의 여행 기록",
@@ -31,7 +31,7 @@ translations = {
         "map_section": "🗺️ 도시 지도",
         "error_date": "⚠️ 귀국일이 출국일보다 앞설 수 없습니다.",
         "error_no_info": "❌ 에 대한 상세 정보가 없습니다. 목록에서 다른 국가를 선택해 주세요.",
-        "info_emergency_tip": "💡 **국가별 맞춤 대처 정보:** 긴급 전화는 **1차적인 연결** 수단입니다. 상황별 상세 대처법은 아래 검색을 통해 확인하세요.",
+        "info_emergency_tip": "💡 **상황별 대처 정보:** 긴급 전화는 **1차 연결 수단**입니다. 상세 대처법은 아래 검색을 통해 확인하세요.",
         "info_exchange_rate": "해당 국가의 환율 정보가 없습니다.",
         "info_no_record": "가/이 없습니다.",
         "btn_clear_record": "🗑️ 나의 여행 기록 초기화",
@@ -39,10 +39,16 @@ translations = {
         "map_coords_caption": "📍 현재 선택된 도시: ",
         "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다. (참고: 영어 모드에서 지도가 보이지 않을 수 있습니다.)",
         "info_trip_duplicate": "🚨 이미 기록된 여행입니다. 새로운 여행을 검색해 주세요.",
+        "emergency_contacts": "☎️ 주요 긴급 연락처",
+        "embassy_contact": "🇰🇷 대사관 연락처",
+        "major_hospitals": "🏥 주요 병원 정보",
+        "local_emergency_phrases": "🗣️ 현지어 응급 문장",
+        "phrase_help": "도와주세요",
+        "phrase_hospital": "병원",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v12)",
-        "caption": "Travel schedule · Map · Latest issues · Emergency call link · Expanded countries/cities info",
+        "title": "✈️ SafeTrip Full Version (v13)",
+        "caption": "Travel schedule · Map · Latest issues · Emergency contacts · Local response included",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
         "departure": "Departure Date",
@@ -52,7 +58,7 @@ translations = {
         "country_select": "🌍 Select Country",
         "city_select": "🏙️ Select City",
         "search_report": "🔍 View Safety Report",
-        "emergency_section": "🚨 Emergency Response",
+        "emergency_section": "🚨 Emergency Contacts & Response", # 이름 변경
         "call_emergency": "📞 Make Emergency Call",
         "risk_info": "⚠️ Key Risks & Notices",
         "tips_info": "✅ Response Tips",
@@ -65,7 +71,7 @@ translations = {
         "map_section": "🗺️ City Map",
         "error_date": "⚠️ Return Date cannot be earlier than Departure Date.",
         "error_no_info": "❌ No detailed information available for. Please select another country from the list.",
-        "info_emergency_tip": "💡 **Country-specific Response Info:** Emergency call is the ** primary connection** method. Check detailed response tips below.",
+        "info_emergency_tip": "💡 **Situation-specific Response Info:** Emergency call is the ** primary connection** method. Check detailed response tips below.",
         "info_exchange_rate": "No exchange rate information for this country.",
         "info_no_record": " found.",
         "btn_clear_record": "🗑️ Clear My Travel Records",
@@ -73,10 +79,16 @@ translations = {
         "map_coords_caption": "📍 Selected City: ",
         "map_error_caption": "⚠️ Map coordinates are not available. (Note: The map may not be visible in English mode.)",
         "info_trip_duplicate": "🚨 This exact trip is already recorded. Please search for a new trip.",
+        "emergency_contacts": "☎️ Key Emergency Contacts",
+        "embassy_contact": "🇰🇷 Embassy Contact",
+        "major_hospitals": "🏥 Major Hospitals Info",
+        "local_emergency_phrases": "🗣️ Local Emergency Phrases",
+        "phrase_help": "I need help",
+        "phrase_hospital": "hospital",
     }
 }
 
-# --- 나라/도시 이름 번역 딕셔너리 ---
+# --- 나라/도시 이름 번역 딕셔너리 (이전과 동일) ---
 country_city_translations = {
     "한국": "South Korea", "서울": "Seoul", "부산": "Busan", "제주": "Jeju", "인천": "Incheon", "대구": "Daegu", "광주": "Gwangju", "울산": "Ulsan",
     "일본": "Japan", "도쿄": "Tokyo", "오사카": "Osaka", "후쿠오카": "Fukuoka", "삿포로": "Sapporo", "교토": "Kyoto", "요코하마": "Yokohama", "나고야": "Nagoya",
@@ -89,56 +101,74 @@ country_city_translations = {
     "인도네시아": "Indonesia", "발리": "Bali", "자카르타": "Jakarta", "롬복": "Lombok", "욕야카르타": "Yogyakarta",
 }
 
-# --- 다국어 데이터 포함 (ko_data, en_data) ---
+# --- 다국어 데이터 포함 (V13: 긴급 연락처, 병원, 현지어 추가) ---
 safety_data = {
     "한국": {
-        "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"], "현지 연락처": {"긴급 전화": "112 / 119"},
+        "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"], 
+        "현지 연락처": {"긴급 전화": "112 / 119", "대사관": "+82-2-3210-0404 (일반)", "병원": "서울대학교병원 (대표)"},
+        "현지어": {"도와주세요": "도와주세요", "병원": "병원"},
         "ko_data": {"위험 정보": ["대체로 안전", "교통 혼잡 시간 주의"], "대처 요령": ["대중교통 이용 권장"], "추가 이슈": ["최근 소매치기 증가 보고됨"]},
         "en_data": {"위험 정보": ["Generally safe", "Be cautious during traffic congestion"], "대처 요령": ["Recommended to use public transportation"], "추가 이슈": ["Recent increase in pickpocketing reported"]}
     },
     "일본": {
-        "도시": ["도쿄", "오사카", "후쿠오카", "삿포로", "교토", "요코하마", "나고야"], "현지 연락처": {"긴급 전화": "110 / 119"},
+        "도시": ["도쿄", "오사카", "후쿠오카", "삿포로", "교토", "요코하마", "나고야"], 
+        "현지 연락처": {"긴급 전화": "110 / 119", "대사관": "+81-3-3452-7611", "병원": "도쿄대학 의학부 부속병원"},
+        "현지어": {"도와주세요": "タスケテ (Tasuke-te)", "병원": "ビョウイン (Byouin)"},
         "ko_data": {"위험 정보": ["지진 가능성", "유흥가 호객행위 주의"], "대처 요령": ["지진 발생 시 DROP, COVER, HOLD ON"], "추가 이슈": ["외국인 대상 유흥가 사기 사례 증가"]},
         "en_data": {"위험 정보": ["Possibility of earthquakes", "Caution against soliciting in entertainment districts"], "대처 요령": ["In case of earthquake: DROP, COVER, HOLD ON"], "추가 이슈": ["Increase in scam cases targeting foreigners in entertainment districts"]}
     },
     "태국": {
-        "도시": ["방콕", "푸켓", "치앙마이", "파타야", "끄라비", "코사무이"], "현지 연락처": {"긴급 전화": "191 / 1669"},
+        "도시": ["방콕", "푸켓", "치앙마이", "파타야", "끄라비", "코사무이"], 
+        "현지 연락처": {"긴급 전화": "191 / 1669", "대사관": "+66-2-247-7537", "병원": "Bumrungrad International Hospital (방콕)"},
+        "현지어": {"도와주세요": "ชว่ ย ด้วย (Chuay duay)", "병원": "โรงพยาบาล (Rong phayaban)"},
         "ko_data": {"위험 정보": ["관광지 소매치기 주의", "툭툭 이용 시 가격 흥정 필수"], "대처 요령": ["공인된 택시 앱 사용"], "추가 이슈": ["밤늦은 루프탑 바에서 음료 음용 주의"]},
         "en_data": {"위험 정보": ["Beware of pickpocketing in tourist areas", "Mandatory price negotiation when using Tuktuk"], "대처 요령": ["Use certified taxi apps"], "추가 이슈": ["Caution when consuming beverages at late-night rooftop bars"]}
     },
     "캄보디아": {
-        "도시": ["프놈펜", "시엠립", "시아누크빌", "앙코르", "바탐방"], "현지 연락처": {"긴급 전화": "117 / 119"},
+        "도시": ["프놈펜", "시엠립", "시아누크빌", "앙코르", "바탐방"], 
+        "현지 연락처": {"긴급 전화": "117 / 119", "대사관": "+855-23-981-125", "병원": "Calmette Hospital (프놈펜)"},
+        "현지어": {"도와주세요": "ជួយខ្ញុំ (Chuoy k'nyom)", "병원": "មន្ទីរពេទ្យ (Mon-tir peth)"},
         "ko_data": {"위험 정보": ["절도 발생 증가", "모기 매개 질병(뎅기열) 주의", "외국인 납치·사기 사례 보고됨"], "대처 요령": ["야간 외출 시 택시 이용 권장", "현금 보관 주의"], "추가 이슈": ["한국인 대상 유사 납치·사기 경고"]},
         "en_data": {"위험 정보": ["Increase in theft incidents", "Caution regarding mosquito-borne diseases (Dengue fever)", "Foreigner kidnapping/scam cases reported"], "대처 요령": ["Recommended to use taxis for night outings", "Be careful with cash storage"], "추가 이슈": ["Warning against attempted kidnapping and scams targeting South Koreans"]}
     },
     "미국": {
-        "도시": ["뉴욕", "LA", "샌프란시스코", "하와이", "시카고"], "현지 연락처": {"긴급 전화": "911"},
+        "도시": ["뉴욕", "LA", "샌프란시스코", "하와이", "시카고"], 
+        "현지 연락처": {"긴급 전화": "911", "대사관": "+1-202-939-5600 (워싱턴)", "병원": "NYU Langone Health (뉴욕)"},
+        "현지어": {"도와주세요": "I need help", "병원": "Hospital"},
         "ko_data": {"위험 정보": ["도심 일부 지역 범죄율 높음", "법규: 총기 사고 주의"], "대처 요령": ["야간에는 인적이 드문 곳 피하기"], "추가 이슈": ["특정 도시 관광객 대상 범죄 증가 보고됨"]},
         "en_data": {"위험 정보": ["High crime rate in some urban areas", "Law: Beware of gun incidents"], "대처 요령": ["Avoid sparsely populated areas at night"], "추가 이슈": ["Increase in crime targeting tourists in specific cities reported"]}
     },
     "영국": {
-        "도시": ["런던", "맨체스터", "에든버러", "리버풀"], "현지 연락처": {"긴급 전화": "999"},
+        "도시": ["런던", "맨체스터", "에든버러", "리버풀"], 
+        "현지 연락처": {"긴급 전화": "999", "대사관": "+44-20-7227-5500", "병원": "St Thomas' Hospital (런던)"},
+        "현지어": {"도와주세요": "I need help", "병원": "Hospital"},
         "ko_data": {"위험 정보": ["기차·지하철 지연 가능성", "도심 소매치기 주의"], "대처 요령": ["혼잡 시간대 대비", "귀중품 주의"], "추가 이슈": ["런던 중심가에서 관광객 대상 사기 사례 증가"]},
         "en_data": {"위험 정보": ["Possibility of train/subway delays", "Beware of pickpocketing in city centers"], "대처 요령": ["Prepare for rush hours", "Guard valuables carefully"], "추가 이슈": ["Increase in scam cases targeting tourists in central London"]}
     },
     "호주": {
-        "도시": ["시드니", "멜버른", "브리즈번", "퍼스"], "현지 연락처": {"긴급 전화": "000"},
+        "도시": ["시드니", "멜버른", "브리즈번", "퍼스"], 
+        "현지 연락처": {"긴급 전화": "000", "대사관": "+61-2-6270-4100 (캔버라)", "병원": "Royal Prince Alfred Hospital (시드니)"},
+        "현지어": {"도와주세요": "I need help", "병원": "Hospital"},
         "ko_data": {"위험 정보": ["산불 및 폭우 주의", "환경: 독성 생물 주의"], "대처 요령": ["야생동물과의 접촉 자제"], "추가 이슈": ["해변 이용 시 파도·조류 주의 경고"]},
         "en_data": {"위험 정보": ["Caution for bushfires and heavy rain", "Environment: Beware of venomous wildlife"], "대처 요령": ["Refrain from contacting wild animals"], "추가 이슈": ["Warning about waves and currents when using beaches"]}
     },
     "베트남": {
-        "도시": ["하노이", "호찌민", "다낭", "나트랑"], "현지 연락처": {"긴급 전화": "113 / 115"},
+        "도시": ["하노이", "호찌민", "다낭", "나트랑"], 
+        "현지 연락처": {"긴급 전화": "113 / 115", "대사관": "+84-24-3831-5111", "병원": "Bach Mai Hospital (하노이)"},
+        "현지어": {"도와주세요": "Giúp tôi (Giúp tôi)", "병원": "Bệnh viện (Bệnh viện)"},
         "ko_data": {"위험 정보": ["오토바이 교통량 매우 많음", "핸드폰 날치기 주의"], "대처 요령": ["길거리 걸을 때 소지품 보호 철저"], "추가 이슈": ["관광지 밤거리 안전 주의"]},
         "en_data": {"위험 정보": ["Very high motorcycle traffic", "Beware of mobile phone snatching"], "대처 요령": ["Protect your belongings carefully when walking on the street"], "추가 이슈": ["Caution for safety in tourist night areas"]}
     },
     "인도네시아": {
-        "도시": ["발리", "자카르타", "롬복", "욕야카르타"], "현지 연락처": {"긴급 전화": "110 / 118"},
+        "도시": ["발리", "자카르타", "롬복", "욕야카르타"], 
+        "현지 연락처": {"긴급 전화": "110 / 118", "대사관": "+62-21-2992-5888", "병원": "RSUPN Dr. Cipto Mangunkusumo (자카르타)"},
+        "현지어": {"도와주세요": "Tolong! (Tolong!)", "병원": "Rumah sakit (Rumah sakit)"},
         "ko_data": {"위험 정보": ["자연재해: 화산 활동 및 쓰나미 가능성", "교통: 무면허 운전 위험"], "대처 요령": ["현지 택시 대신 검증된 교통수단 이용"], "추가 이슈": ["외국인 대상 교통사고 증가 보고됨"]},
         "en_data": {"위험 정보": ["Natural Disasters: Possibility of volcanic activity and tsunamis", "Traffic: Risk of unlicensed driving"], "대처 요령": ["Use verified transport methods instead of local taxis"], "추가 이슈": ["Increase in traffic accidents involving foreigners reported"]}
     },
 }
 
-# --- 고정 데이터 ---
+# --- 고정 데이터 (이전과 동일) ---
 exchange_rates = {
     "한국": ("KRW", 1, "1원 = 1원"), "일본": ("JPY", 0.106, "1원 ≈ 0.106엔"), "태국": ("THB", 0.0228, "1원 ≈ 0.0228바트"),
     "캄보디아": ("KHR", 2.83, "1원 ≈ 2.83리엘"), "미국": ("USD", 1/1420, "1원 ≈ 0.00070달러"), "영국": ("GBP", 1/1800, "1원 ≈ 0.00056파운드"),
@@ -312,6 +342,8 @@ if st.session_state.report_on:
     sel_city_display = translate_name(sel_city_ko, lang)
     
     info = safety_data.get(sel_country_ko, {})
+    local_contacts = info.get("현지 연락처", {})
+    local_phrases = info.get("현지어", {})
 
     if not info:
         st.error(f"❌ **{sel_country_display}**" + _["error_no_info"])
@@ -319,6 +351,7 @@ if st.session_state.report_on:
 
     st.header(f"📋 {sel_country_display} – {sel_city_display}")
     
+    # 🚨 'emergency_section'의 탭 이름 변경 반영
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         _["risk_info"], _["tips_info"], _["recent_issues"], _["emergency_section"], _["checklist_section"]
     ])
@@ -337,11 +370,7 @@ if st.session_state.report_on:
         st.subheader(_["tips_info"])
         tips = get_translated_data(sel_country_ko, "tips_info", lang)
         for t in tips: st.success(t)
-        st.markdown("---")
-        phone_raw = info["현지 연락처"]["긴급 전화"]
-        phone = phone_raw.split(" / ")[0]
-        st.markdown(f"**{_['call_emergency'].split(' ')[-2] if lang=='ko' else 'Emergency Phone Number'}:** `{phone_raw}`")
-        st.markdown(f"[{_['call_emergency']}](tel:{phone})")
+        # 📌 긴급전화 관련 내용 삭제
         st.markdown("---")
         search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_ko} 여행 안전 수칙"
         st.link_button(f"✅ {sel_country_display} {_['tips_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
@@ -355,16 +384,41 @@ if st.session_state.report_on:
         search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_ko} 최근 이슈"
         st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
-    # 4. 응급 상황 대처 (tab4)
+    # 4. 긴급 연락처 및 대처 (tab4) - 📌 섹션 강화
     with tab4:
-        st.subheader(_["emergency_section"])
-        st.error(f"**{phone_raw}**")
-        st.markdown(f"[{_['call_emergency']} ({_['call_emergency'].split(' ')[-1] if lang=='ko' else 'Connect'})](tel:{phone})")
+        st.subheader(_["emergency_contacts"])
+        phone_raw = local_contacts.get("긴급 전화", "정보 없음 / No Info")
+        phone = phone_raw.split(" / ")[0]
+        
+        # 4-1. 긴급 전화
+        st.error(f"**🚨 {phone_raw}**")
+        if phone != "정보 없음" and phone != "No Info":
+            st.markdown(f"[{_['call_emergency']} ({_['call_emergency'].split(' ')[-1] if lang=='ko' else 'Connect'})](tel:{phone})")
         st.markdown("---")
+        
+        # 4-2. 대사관 연락처
+        embassy_contact = local_contacts.get("대사관", "정보 없음 / No Info")
+        st.markdown(f"**{_['embassy_contact']}:** `{embassy_contact}`")
+        st.markdown("---")
+
+        # 4-3. 주요 병원 정보 및 검색
+        major_hospital = local_contacts.get("병원", "정보 없음 / No Info")
+        st.markdown(f"**{_['major_hospitals'].split(' ')[0]}:** `{major_hospital}`")
+        search_query_hospital = f"{sel_city_display} Major Hospital Emergency" if lang=="en" else f"{sel_city_ko} 주요 병원 응급실"
+        st.link_button(f"🏥 {_['major_hospitals'].split(' ')[-2 if lang=='ko' else 0]} {_['search_link_btn']}", create_google_search_link(search_query_hospital), use_container_width=True)
+        st.markdown("---")
+        
+        # 4-4. 현지어 응급 문장
+        st.subheader(_["local_emergency_phrases"])
+        help_ko = local_phrases.get("도와주세요", "")
+        hospital_ko = local_phrases.get("병원", "")
+        
+        st.write(f"**{_['phrase_help']}:** `{help_ko}`")
+        st.write(f"**{_['phrase_hospital']}:** `{hospital_ko}`")
+        st.markdown("---")
+        
+        # 4-5. 상황별 대처법 검색 링크
         st.info(_["info_emergency_tip"])
-        st.markdown("#### ⚠️ " + (_["risk_info"].split(" ")[-2] if lang=="ko" else "Key Risks Reference"))
-        for r in risks: st.warning(f"• {r}")
-        st.markdown("---")
         current_search_query = f"{sel_country_display} Travel Emergency Response" if lang=="en" else f"{sel_country_display} 여행 긴급 상황 대처"
         st.link_button(f"🚨 **{sel_country_display}** {_['emergency_section'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(current_search_query), use_container_width=True)
 
@@ -398,21 +452,24 @@ if st.session_state.report_on:
     st.subheader(_["exchange_rate"])
     if sel_country_ko in exchange_rates:
         code, rate, text = exchange_rates[sel_country_ko]
-        st.metric(f"{sel_country_display} ({code}) {_['exchange_rate'].split(' ')[-2] if lang=='ko' else 'Exchange Rate Info'}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
+        st.metric(f"{sel_country_display} ({code}) {_['exchange_rate'].split(' ')[-2 if lang=='ko' else 0] if lang=='ko' else 'Exchange Rate Info'}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
     else:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) - 📌 st.map 복원 ---
+    # --- 지도 섹션 (탭 외부) - 📌 st.map 유지 및 안정화 시도 ---
     st.subheader(_["map_section"])
     lat_lon = coords.get(sel_city_ko)
 
     if lat_lon:
         lat, lon = lat_lon
-        map_data = pd.DataFrame({"lat": [lat], "lon": [lon]})
+        
+        # 📌 st.map의 렌더링 안정화를 위해 'latitude', 'longitude' 열 이름을 명시적으로 사용
+        map_data = pd.DataFrame({
+            "latitude": [lat], 
+            "longitude": [lon]
+        })
 
-        # st.map 복원 및 zoom 레벨 지정 (이전에 원하셨던 스타일입니다.)
-        # 참고: 영어 모드에서 지도가 보이지 않는 문제가 재발할 수 있습니다.
         st.map(
             map_data, 
             latitude=lat, 
