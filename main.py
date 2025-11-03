@@ -1,10 +1,10 @@
-# 파일명: safetrip_v13_final_stmap_enhanced_emergency.py
+# 파일명: main.py (SafeTrip 최종 통합 버전)
 import streamlit as st
 import pandas as pd
 import datetime
-import pydeck as pdk # 이제 사용하지 않지만 Streamlit의 기본 기능을 위해 import는 유지
+import pydeck as pdk # Pydeck은 st.map을 위해 import는 유지합니다.
 
-# --- 다국어 문자열 사전 (V13 기반 - 응급 섹션 강화) ---
+# --- 다국어 문자열 사전 (최종 버전) ---
 translations = {
     "ko": {
         "title": "✈️ SafeTrip",
@@ -18,10 +18,10 @@ translations = {
         "country_select": "🌍 국가 선택",
         "city_select": "🏙️ 도시 선택",
         "search_report": "🔍 안전 보고서 보기",
-        "emergency_section": "🚨 긴급 연락처 및 대처", # 이름 변경
+        "emergency_section": "🚨 긴급 연락처 및 대처", 
         "call_emergency": "📞 긴급전화 걸기",
         "risk_info": "⚠️ 주요 위험 및 유의사항",
-        "tips_info": "✅ 대처 요령", # 긴급 전화 내용 삭제
+        "tips_info": "✅ 대처 요령",
         "recent_issues": "📰 최근 위험 이슈",
         "checklist_section": "🧳 여행 전 필수 점검",
         "record_section": "📜 나의 여행 기록",
@@ -37,7 +37,7 @@ translations = {
         "btn_clear_record": "🗑️ 나의 여행 기록 초기화",
         "help_clear_record": "저장된 모든 여행 기록을 삭제합니다.",
         "map_coords_caption": "📍 현재 선택된 도시: ",
-        "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다. (참고: 영어 모드에서 지도가 보이지 않을 수 있습니다.)",
+        "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다.",
         "info_trip_duplicate": "🚨 이미 기록된 여행입니다. 새로운 여행을 검색해 주세요.",
         "emergency_contacts": "☎️ 주요 긴급 연락처",
         "embassy_contact": "🇰🇷 대사관 연락처",
@@ -47,7 +47,7 @@ translations = {
         "phrase_hospital": "병원",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v13)",
+        "title": "✈️ SafeTrip Full Version",
         "caption": "Travel schedule · Map · Latest issues · Emergency contacts · Local response included",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
@@ -58,7 +58,7 @@ translations = {
         "country_select": "🌍 Select Country",
         "city_select": "🏙️ Select City",
         "search_report": "🔍 View Safety Report",
-        "emergency_section": "🚨 Emergency Contacts & Response", # 이름 변경
+        "emergency_section": "🚨 Emergency Contacts & Response", 
         "call_emergency": "📞 Make Emergency Call",
         "risk_info": "⚠️ Key Risks & Notices",
         "tips_info": "✅ Response Tips",
@@ -77,7 +77,7 @@ translations = {
         "btn_clear_record": "🗑️ Clear My Travel Records",
         "help_clear_record": "Deletes all saved travel records.",
         "map_coords_caption": "📍 Selected City: ",
-        "map_error_caption": "⚠️ Map coordinates are not available. (Note: The map may not be visible in English mode.)",
+        "map_error_caption": "⚠️ Map coordinates are not available.",
         "info_trip_duplicate": "🚨 This exact trip is already recorded. Please search for a new trip.",
         "emergency_contacts": "☎️ Key Emergency Contacts",
         "embassy_contact": "🇰🇷 Embassy Contact",
@@ -101,7 +101,7 @@ country_city_translations = {
     "인도네시아": "Indonesia", "발리": "Bali", "자카르타": "Jakarta", "롬복": "Lombok", "욕야카르타": "Yogyakarta",
 }
 
-# --- 다국어 데이터 포함 (V13: 긴급 연락처, 병원, 현지어 추가) ---
+# --- 다국어 데이터 포함 (긴급 연락처, 병원, 현지어 추가) ---
 safety_data = {
     "한국": {
         "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"], 
@@ -276,7 +276,9 @@ if "checklist" not in st.session_state:
 if "report_on" not in st.session_state:
     st.session_state.report_on = False
 if "selected_country_ko" not in st.session_state:
-    st.session_state.selected_country_ko = list(safety_data.keys())[0]
+    # 안전하게 기본 국가 설정
+    default_country = list(safety_data.keys())[0]
+    st.session_state.selected_country_ko = default_country
 if "selected_city_ko" not in st.session_state:
     st.session_state.selected_city_ko = safety_data[st.session_state.selected_country_ko]["도시"][0]
 
@@ -303,7 +305,7 @@ city_ko = get_country_ko_name(city_display_name, lang)
 
 if st.button(_["search_report"], type="primary"):
     
-    # --- 📌 여행 기록 중복 제거 로직 ---
+    # --- 여행 기록 중복 제거 로직 ---
     new_trip = {
         "국가": country_ko, "도시": city_ko, "출국일": departure, "귀국일": return_date
     }
@@ -319,7 +321,6 @@ if st.button(_["search_report"], type="primary"):
     
     if is_duplicate:
         st.warning(_["info_trip_duplicate"])
-        # 상태만 업데이트하고 rerun은 하지 않습니다.
         st.session_state.selected_country_ko = country_ko
         st.session_state.selected_city_ko = city_ko
         st.session_state.report_on = True
@@ -331,7 +332,7 @@ if st.button(_["search_report"], type="primary"):
         st.session_state.selected_country_ko = country_ko
         st.session_state.selected_city_ko = city_ko
         st.session_state.report_on = True
-        st.rerun() # 새로운 여행일 경우 보고서 로드를 위해 새로고침
+        st.rerun() 
 
 # --- 보고서 표시 (st.tabs 사용) ---
 if st.session_state.report_on:
@@ -351,7 +352,6 @@ if st.session_state.report_on:
 
     st.header(f"📋 {sel_country_display} – {sel_city_display}")
     
-    # 🚨 'emergency_section'의 탭 이름 변경 반영
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         _["risk_info"], _["tips_info"], _["recent_issues"], _["emergency_section"], _["checklist_section"]
     ])
@@ -370,7 +370,6 @@ if st.session_state.report_on:
         st.subheader(_["tips_info"])
         tips = get_translated_data(sel_country_ko, "tips_info", lang)
         for t in tips: st.success(t)
-        # 📌 긴급전화 관련 내용 삭제
         st.markdown("---")
         search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_ko} 여행 안전 수칙"
         st.link_button(f"✅ {sel_country_display} {_['tips_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
@@ -384,40 +383,38 @@ if st.session_state.report_on:
         search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_ko} 최근 이슈"
         st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
-    # 4. 긴급 연락처 및 대처 (tab4) - 📌 섹션 강화 (수정된 부분)
+    # 4. 긴급 연락처 및 대처 (tab4) - 최종 수정 적용
     with tab4:
         # 4-1. 긴급 전화 (가장 크게 강조)
         phone_raw = local_contacts.get("긴급 전화", "정보 없음 / No Info")
         phone = phone_raw.split(" / ")[0]
         
-        st.markdown(f"### {_['call_emergency'].split(' ')[-1 if lang=='ko' else 0]}") # "긴급전화" 또는 "Emergency Call"
+        st.markdown(f"### {_['call_emergency'].split(' ')[-1 if lang=='ko' else 0]}")
         st.error(f"**🚨 {phone_raw}**")
         if phone != "정보 없음" and phone != "No Info":
-             # 📌 st.link_button 수정 적용
             st.link_button(f"{_['call_emergency']} ({phone_raw})", f"tel:{phone}", use_container_width=True)
         st.markdown("---")
         
         # 4-2. 대사관 및 병원 정보를 컬럼으로 나누어 크게 표시
         col_embassy, col_hospital = st.columns(2)
         
-        # 대사관
         with col_embassy:
             embassy_contact = local_contacts.get("대사관", "정보 없음 / No Info")
             st.markdown(f"**{_['embassy_contact']}**")
-            # 📌 텍스트 크기 강조 (st.subheader 바로 아래 크기)
             st.markdown(f"#### `{embassy_contact}`") 
         
-        # 주요 병원
         with col_hospital:
             major_hospital = local_contacts.get("병원", "정보 없음 / No Info")
             st.markdown(f"**{_['major_hospitals']}**")
-            # 📌 텍스트 크기 강조 (st.subheader 바로 아래 크기)
             st.markdown(f"#### `{major_hospital}`") 
         
         st.markdown("---")
-        # 병원 검색 링크는 그대로 유지
+        
+        # 4-3. 병원 검색 링크 (번역 수정 완료)
         search_query_hospital = f"{sel_city_display} Major Hospital Emergency" if lang=="en" else f"{sel_city_ko} 주요 병원 응급실"
-        st.link_button(f"🏥 {_['major_hospitals'].split(' ')[-2 if lang=='ko' else 0]} {_['search_link_btn']}", create_google_search_link(search_query_hospital), use_container_width=True)
+        major_hospitals_text_only = _['major_hospitals'].replace('🏥', '').strip()
+        search_button_label = f"🏥 {major_hospitals_text_only}: {_['search_link_btn']}"
+        st.link_button(search_button_label, create_google_search_link(search_query_hospital), use_container_width=True)
         st.markdown("---")
 
         # 4-4. 현지어 응급 문장
@@ -438,7 +435,7 @@ if st.session_state.report_on:
     # 5. 여행 전 필수 점검 (tab5)
     with tab5:
         st.subheader(_["checklist_section"])
-        checklist = st.session_state.checklist[sel_country_ko]
+        checklist = st.session_state.checklist.get(sel_country_ko, {item: False for item in checklist_items_ko})
         
         new_checklist_status = {}
         for idx, ko_item in enumerate(checklist_items_ko):
@@ -470,14 +467,14 @@ if st.session_state.report_on:
         st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) - 📌 st.map 유지 및 안정화 시도 ---
+    # --- 지도 섹션 (탭 외부) - st.map 안정화 및 복원 완료 ---
     st.subheader(_["map_section"])
     lat_lon = coords.get(sel_city_ko)
 
     if lat_lon:
         lat, lon = lat_lon
         
-        # 📌 st.map의 렌더링 안정화를 위해 'latitude', 'longitude' 열 이름을 명시적으로 사용
+        # 지도의 렌더링 안정화를 위해 DataFrame만 전달하는 방식으로 변경 (st.map 유지)
         map_data = pd.DataFrame({
             "latitude": [lat], 
             "longitude": [lon]
@@ -485,8 +482,6 @@ if st.session_state.report_on:
 
         st.map(
             map_data, 
-            latitude=lat, 
-            longitude=lon, 
             zoom=11, 
             use_container_width=True
         )
@@ -497,6 +492,7 @@ if st.session_state.report_on:
     # --- 여행 기록 테이블 ---
     def clear_travel_history():
         st.session_state.travel_history = []
+        st.session_state.report_on = False
         st.rerun()
 
     col_rec_title, col_rec_button = st.columns([0.7, 0.3])
