@@ -1,4 +1,4 @@
-# 파일명: safetrip_v10_tabbed_final_rate_separated.py
+# 파일명: safetrip_v10_tabbed_final_rate_separated_modified.py
 import streamlit as st
 import pandas as pd
 import datetime
@@ -19,8 +19,8 @@ translations = {
         "city_select": "🏙️ 도시 선택",
         "search_report": "🔍 안전 보고서 보기",
         "emergency_section": "🚨 응급 상황 대처",
-        "emergency_select": "상황 선택",
-        "emergency_advice_prefix": "🔹 대처 요령: ",
+        "emergency_select": "상황 선택", # 사용하지 않지만, 기존 코드를 위해 유지
+        "emergency_advice_prefix": "🔹 대처 요령: ", # 사용하지 않지만, 기존 코드를 위해 유지
         "call_emergency": "📞 긴급전화 걸기",
         "risk_info": "⚠️ 주요 위험 및 유의사항",
         "tips_info": "✅ 대처 요령",
@@ -45,8 +45,8 @@ translations = {
         "city_select": "🏙️ Select City",
         "search_report": "🔍 View Safety Report",
         "emergency_section": "🚨 Emergency Response",
-        "emergency_select": "Select Situation",
-        "emergency_advice_prefix": "🔹 Advice: ",
+        "emergency_select": "Select Situation", # 사용하지 않지만, 기존 코드를 위해 유지
+        "emergency_advice_prefix": "🔹 Advice: ", # 사용하지 않지만, 기존 코드를 위해 유지
         "call_emergency": "📞 Make Emergency Call",
         "risk_info": "⚠️ Key Risks & Notices",
         "tips_info": "✅ Response Tips",
@@ -63,7 +63,7 @@ translations = {
 # 언어 선택
 lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), key="lang_choice")
 lang = "ko" if lang_option == "한국어" else "en"
-_ = translations[lang]
+_ = translations[lang] # 선택된 언어의 딕셔너리를 '_' 변수에 할당하여 모든 UI 텍스트에 적용
 
 st.set_page_config(page_title=_["title"], page_icon="✈️", layout="wide")
 
@@ -181,6 +181,7 @@ def create_google_search_link(query):
 st.subheader(_["travel_schedule"])
 departure = st.date_input(_["departure"], datetime.date.today())
 return_date = st.date_input(_["return"], datetime.date.today() + datetime.timedelta(days=7))
+
 if return_date < departure:
     st.error("⚠️ " + _["return"] + "이/가 " + _["departure"] + "보다 앞설 수 없습니다.")
 else:
@@ -276,10 +277,9 @@ if st.session_state.report_on:
         with col_call:
             phone_raw = info["현지 연락처"]["긴급 전화"]
             phone = phone_raw.split(" / ")[0]
-            st.markdown(f"**긴급 전화 번호:** `{phone_raw}`")
+            st.markdown(f"**{_["call_emergency"].split(" ")[-2]}:** `{phone_raw}`") # 긴급전화 번호 (한국어/영어)
             st.markdown(f"[{_['call_emergency']}](tel:{phone})")
-        # col_rate: 환율 정보가 있던 컬럼 제거
-            
+        
         st.markdown("---")
         search_query = f"{sel_country} 여행 대처 요령"
         st.link_button(
@@ -302,34 +302,31 @@ if st.session_state.report_on:
             use_container_width=True
         )
 
-    # 4. 응급 상황 대처 (tab4)
+    # 4. 응급 상황 대처 (tab4) **<-- 수정된 부분**
     with tab4:
         st.subheader(_["emergency_section"])
-        emergency_types = {
-            "earthquake": "Earthquake / 지진",
-            "crime": "Crime / 범죄",
-            "medical": "Medical Emergency / 의료 긴급"
-        }
-        sel_em_key = st.selectbox(_["emergency_select"], list(emergency_types.values()), key="sel_emergency")
-        advice_map = {
-            "earthquake": "지진 발생 시 구조된 지진대피소로 즉시 이동하세요. / In case of earthquake, move to a designated safe shelter immediately.",
-            "crime": "주변에 인적이 드물거나 불안한 곳이라면 즉시 밝은 조명과 사람이 많은 공간으로 이동하세요. / If you are in an area with high crime risk, move to a well‑lit, populated area immediately.",
-            "medical": "긴급 병원이나 응급실로 이동하고, 대사관/영사관 연락처도 확인하세요. / Move to the nearest emergency hospital and contact your embassy/consulate."
-        }
-        
-        current_advice = "정보 없음"
-        current_search_query = ""
-        for key in advice_map.keys():
-            if emergency_types[key] == sel_em_key:
-                current_advice = advice_map[key]
-                current_search_query = f"{sel_country} {emergency_types[key].split(' / ')[-1]} 대처법"
-                break
-        
-        st.info(_["emergency_advice_prefix"] + current_advice)
-        
+
+        phone_raw = info["현지 연락처"]["긴급 전화"]
+        phone = phone_raw.split(" / ")[0]
+
+        st.markdown("### 🚨 " + (_["emergency_section"].split(" ")[-1] if lang=="ko" else "Local Emergency Number")) # 현지 긴급 전화 번호 
+        st.error(f"**{phone_raw}**") # 긴급 전화 번호 강조
+
+        st.markdown(f"[{_['call_emergency']} ({_["call_emergency"].split(" ")[-1] if lang=="ko" else "Connect to Primary Number"})](tel:{phone})")
+
         st.markdown("---")
+        st.info("💡 " + (_["country_select"].split(" ")[-1] if lang=="ko" else "Country-specific Response Info:") + " 긴급 전화는 **1차적인 연결** 수단입니다. 상황별 상세 대처법은 아래 검색을 통해 확인하세요.")
+        
+        # 기존의 위험 정보를 참고로 보여줌
+        st.markdown("#### ⚠️ " + (_["risk_info"].split(" ")[-2] if lang=="ko" else "Key Risks Reference"))
+        for r in info.get("위험 정보", ["정보 없음"]):
+            st.warning(f"• {r}")
+            
+        # Emergency Google Search Link
+        st.markdown("---")
+        current_search_query = f"{sel_country} 여행 긴급 상황 대처"
         st.link_button(
-            f"🚨 응급 상황 대처법: {_['search_link_btn']}", 
+            f"🚨 **{sel_country}** " + (_["emergency_section"].split(" ")[-1] if lang=="ko" else "Detailed Emergency Response") + f": {_['search_link_btn']}",
             create_google_search_link(current_search_query),
             use_container_width=True
         )
@@ -359,7 +356,7 @@ if st.session_state.report_on:
         st.markdown("---")
         search_query = f"{sel_country} 여행 준비물 체크리스트"
         st.link_button(
-            f"🧳 여행 준비물 확인: {_['search_link_btn']}", 
+            f"🧳 " + (_["checklist_section"].split(" ")[-1] if lang=="ko" else "Check Travel Essentials") + f": {_['search_link_btn']}",
             create_google_search_link(search_query),
             use_container_width=True
         )
@@ -370,9 +367,9 @@ if st.session_state.report_on:
     st.subheader(_["exchange_rate"])
     if sel_country in exchange_rates:
         code, rate, text = exchange_rates[sel_country]
-        st.metric(f"{sel_country} ({code}) 환율 정보", text)
+        st.metric(f"{sel_country} ({code}) {_["exchange_rate"].split(" ")[-2] if lang=="ko" else "Exchange Rate Info"}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
     else:
-        st.info("해당 국가의 환율 정보가 없습니다.")
+        st.info("해당 국가의 환율 정보가 없습니다." if lang=="ko" else "No exchange rate information for this country.")
     st.markdown("---")
 
     # --- 지도 섹션 (탭 외부, V10 코드 기반 - 원래 위치로 복원) ---
@@ -381,12 +378,32 @@ if st.session_state.report_on:
     st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
 
     # --- 여행 기록 테이블 (V10 코드 그대로) ---
-    st.subheader(_["record_section"])
+    
+    # **<-- 수정된 부분: 초기화 버튼 추가 -->**
+    def clear_travel_history():
+        st.session_state.travel_history = []
+        st.rerun()
+
+    col_rec_title, col_rec_button = st.columns([0.7, 0.3])
+    with col_rec_title:
+        st.subheader(_["record_section"])
+    with col_rec_button:
+        # 영어일 경우 텍스트를 "Clear My Travel Records" 등으로 변경
+        button_text = "🗑️ 나의 여행 기록 초기화" if lang == "ko" else "🗑️ Clear My Travel Records"
+        help_text = "저장된 모든 여행 기록을 삭제합니다." if lang == "ko" else "Deletes all saved travel records."
+        st.button(button_text, on_click=clear_travel_history, help=help_text)
+    # **<-- 수정된 부분 끝 -->**
+
     record_label = _["record_section"]
     if st.session_state.travel_history:
-        st.dataframe(pd.DataFrame(st.session_state.travel_history))
+        # 데이터프레임의 컬럼 이름도 선택된 언어에 따라 변경되도록 수정
+        df_history = pd.DataFrame(st.session_state.travel_history)
+        if lang == "en":
+             df_history.columns = ["Country", "City", "Departure Date", "Return Date"]
+        
+        st.dataframe(df_history)
     else:
-        st.info(f"{record_label}가/이 없습니다.")
+        st.info(f"{record_label}가/이 없습니다." if lang=="ko" else f"No {record_label.lower()} found.")
 
 st.markdown("—")
 st.markdown("© 2025 SafeTrip Assistant")
