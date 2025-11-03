@@ -1,8 +1,8 @@
-# 파일명: safetrip_v10_tabbed_final_rate_separated_modified_v3.py
+# 파일명: safetrip_v10_final_multilingual_complete.py
 import streamlit as st
 import pandas as pd
 import datetime
-import pydeck as pdk
+import pydeck as pdk # 사용하지 않지만 기존 코드에 있었으므로 남겨둡니다.
 
 # --- 다국어 문자열 사전 (V10 기반) ---
 translations = {
@@ -29,9 +29,18 @@ translations = {
         "search_link_btn": "구글에서 더 알아보기",
         "exchange_rate": "💱 환율 정보",
         "map_section": "🗺️ 도시 지도",
+        "error_date": "⚠️ 귀국일이 출국일보다 앞설 수 없습니다.",
+        "error_no_info": "❌ 에 대한 상세 정보가 없습니다. 목록에서 다른 국가를 선택해 주세요.",
+        "info_emergency_tip": "💡 **국가별 맞춤 대처 정보:** 긴급 전화는 **1차적인 연결** 수단입니다. 상황별 상세 대처법은 아래 검색을 통해 확인하세요.",
+        "info_exchange_rate": "해당 국가의 환율 정보가 없습니다.",
+        "info_no_record": "가/이 없습니다.",
+        "btn_clear_record": "🗑️ 나의 여행 기록 초기화",
+        "help_clear_record": "저장된 모든 여행 기록을 삭제합니다.",
+        "map_coords_caption": "📍 현재 선택된 도시: ",
+        "map_error_caption": "⚠️ 지도 좌표 정보가 없습니다.",
     },
     "en": {
-        "title": "✈️ SafeTrip Full Version (v10) - Tab & Search Integrated",
+        "title": "✈️ SafeTrip Full Version (v10)",
         "caption": "Travel schedule · Map · Latest issues · Emergency call link · Expanded countries/cities info",
         "lang_select": "Select Language",
         "travel_schedule": "📆 Enter Travel Schedule",
@@ -53,6 +62,15 @@ translations = {
         "search_link_btn": "Search on Google",
         "exchange_rate": "💱 Exchange Rate Info",
         "map_section": "🗺️ City Map",
+        "error_date": "⚠️ Return Date cannot be earlier than Departure Date.",
+        "error_no_info": "❌ No detailed information available for. Please select another country from the list.",
+        "info_emergency_tip": "💡 **Country-specific Response Info:** Emergency call is the ** primary connection** method. Check detailed response tips below.",
+        "info_exchange_rate": "No exchange rate information for this country.",
+        "info_no_record": " found.",
+        "btn_clear_record": "🗑️ Clear My Travel Records",
+        "help_clear_record": "Deletes all saved travel records.",
+        "map_coords_caption": "📍 Selected City: ",
+        "map_error_caption": "⚠️ Map coordinates are not available.",
     }
 }
 
@@ -69,151 +87,61 @@ country_city_translations = {
     "인도네시아": "Indonesia", "발리": "Bali", "자카르타": "Jakarta", "롬복": "Lombok", "욕야카르타": "Yogyakarta",
 }
 
-# --- 기본 데이터 확장 및 다국어 지원 추가 ---
-# 데이터 구조를 변경하여 한국어(ko_data)와 영어(en_data)를 모두 포함
+# --- 다국어 데이터 포함 (ko_data, en_data) ---
 safety_data = {
     "한국": {
-        "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"],
-        "현지 연락처": {"긴급 전화": "112 / 119"},
-        "ko_data": {
-            "위험 정보": ["대체로 안전", "교통 혼잡 시간 주의"],
-            "대처 요령": ["대중교통 이용 권장"],
-            "추가 이슈": ["최근 소매치기 증가 보고됨"]
-        },
-        "en_data": {
-            "위험 정보": ["Generally safe", "Be cautious during traffic congestion"],
-            "대처 요령": ["Recommended to use public transportation"],
-            "추가 이슈": ["Recent increase in pickpocketing reported"]
-        }
+        "도시": ["서울", "부산", "제주", "인천", "대구", "광주", "울산"], "현지 연락처": {"긴급 전화": "112 / 119"},
+        "ko_data": {"위험 정보": ["대체로 안전", "교통 혼잡 시간 주의"], "대처 요령": ["대중교통 이용 권장"], "추가 이슈": ["최근 소매치기 증가 보고됨"]},
+        "en_data": {"위험 정보": ["Generally safe", "Be cautious during traffic congestion"], "대처 요령": ["Recommended to use public transportation"], "추가 이슈": ["Recent increase in pickpocketing reported"]}
     },
     "일본": {
-        "도시": ["도쿄", "오사카", "후쿠오카", "삿포로", "교토", "요코하마", "나고야"],
-        "현지 연락처": {"긴급 전화": "110 / 119"},
-        "ko_data": {
-            "위험 정보": ["지진 가능성", "유흥가 호객행위 주의"],
-            "대처 요령": ["지진 발생 시 DROP, COVER, HOLD ON"],
-            "추가 이슈": ["외국인 대상 유흥가 사기 사례 증가"]
-        },
-        "en_data": {
-            "위험 정보": ["Possibility of earthquakes", "Caution against soliciting in entertainment districts"],
-            "대처 요령": ["In case of earthquake: DROP, COVER, HOLD ON"],
-            "추가 이슈": ["Increase in scam cases targeting foreigners in entertainment districts"]
-        }
+        "도시": ["도쿄", "오사카", "후쿠오카", "삿포로", "교토", "요코하마", "나고야"], "현지 연락처": {"긴급 전화": "110 / 119"},
+        "ko_data": {"위험 정보": ["지진 가능성", "유흥가 호객행위 주의"], "대처 요령": ["지진 발생 시 DROP, COVER, HOLD ON"], "추가 이슈": ["외국인 대상 유흥가 사기 사례 증가"]},
+        "en_data": {"위험 정보": ["Possibility of earthquakes", "Caution against soliciting in entertainment districts"], "대처 요령": ["In case of earthquake: DROP, COVER, HOLD ON"], "추가 이슈": ["Increase in scam cases targeting foreigners in entertainment districts"]}
     },
     "태국": {
-        "도시": ["방콕", "푸켓", "치앙마이", "파타야", "끄라비", "코사무이"],
-        "현지 연락처": {"긴급 전화": "191 / 1669"},
-        "ko_data": {
-            "위험 정보": ["관광지 소매치기 주의", "툭툭 이용 시 가격 흥정 필수"],
-            "대처 요령": ["공인된 택시 앱 사용"],
-            "추가 이슈": ["밤늦은 루프탑 바에서 음료 음용 주의"]
-        },
-        "en_data": {
-            "위험 정보": ["Beware of pickpocketing in tourist areas", "Mandatory price negotiation when using Tuktuk"],
-            "대처 요령": ["Use certified taxi apps"],
-            "추가 이슈": ["Caution when consuming beverages at late-night rooftop bars"]
-        }
+        "도시": ["방콕", "푸켓", "치앙마이", "파타야", "끄라비", "코사무이"], "현지 연락처": {"긴급 전화": "191 / 1669"},
+        "ko_data": {"위험 정보": ["관광지 소매치기 주의", "툭툭 이용 시 가격 흥정 필수"], "대처 요령": ["공인된 택시 앱 사용"], "추가 이슈": ["밤늦은 루프탑 바에서 음료 음용 주의"]},
+        "en_data": {"위험 정보": ["Beware of pickpocketing in tourist areas", "Mandatory price negotiation when using Tuktuk"], "대처 요령": ["Use certified taxi apps"], "추가 이슈": ["Caution when consuming beverages at late-night rooftop bars"]}
     },
     "캄보디아": {
-        "도시": ["프놈펜", "시엠립", "시아누크빌", "앙코르", "바탐방"],
-        "현지 연락처": {"긴급 전화": "117 / 119"},
-        "ko_data": {
-            "위험 정보": ["절도 발생 증가", "모기 매개 질병(뎅기열) 주의", "외국인 납치·사기 사례 보고됨"],
-            "대처 요령": ["야간 외출 시 택시 이용 권장", "현금 보관 주의"],
-            "추가 이슈": ["한국인 대상 유사 납치·사기 경고"]
-        },
-        "en_data": {
-            "위험 정보": ["Increase in theft incidents", "Caution regarding mosquito-borne diseases (Dengue fever)", "Foreigner kidnapping/scam cases reported"],
-            "대처 요령": ["Recommended to use taxis for night outings", "Be careful with cash storage"],
-            "추가 이슈": ["Warning against attempted kidnapping and scams targeting South Koreans"]
-        }
+        "도시": ["프놈펜", "시엠립", "시아누크빌", "앙코르", "바탐방"], "현지 연락처": {"긴급 전화": "117 / 119"},
+        "ko_data": {"위험 정보": ["절도 발생 증가", "모기 매개 질병(뎅기열) 주의", "외국인 납치·사기 사례 보고됨"], "대처 요령": ["야간 외출 시 택시 이용 권장", "현금 보관 주의"], "추가 이슈": ["한국인 대상 유사 납치·사기 경고"]},
+        "en_data": {"위험 정보": ["Increase in theft incidents", "Caution regarding mosquito-borne diseases (Dengue fever)", "Foreigner kidnapping/scam cases reported"], "대처 요령": ["Recommended to use taxis for night outings", "Be careful with cash storage"], "추가 이슈": ["Warning against attempted kidnapping and scams targeting South Koreans"]}
     },
     "미국": {
-        "도시": ["뉴욕", "LA", "샌프란시스코", "하와이", "시카고"],
-        "현지 연락처": {"긴급 전화": "911"},
-        "ko_data": {
-            "위험 정보": ["도심 일부 지역 범죄율 높음", "법규: 총기 사고 주의"],
-            "대처 요령": ["야간에는 인적이 드문 곳 피하기"],
-            "추가 이슈": ["특정 도시 관광객 대상 범죄 증가 보고됨"]
-        },
-        "en_data": {
-            "위험 정보": ["High crime rate in some urban areas", "Law: Beware of gun incidents"],
-            "대처 요령": ["Avoid sparsely populated areas at night"],
-            "추가 이슈": ["Increase in crime targeting tourists in specific cities reported"]
-        }
+        "도시": ["뉴욕", "LA", "샌프란시스코", "하와이", "시카고"], "현지 연락처": {"긴급 전화": "911"},
+        "ko_data": {"위험 정보": ["도심 일부 지역 범죄율 높음", "법규: 총기 사고 주의"], "대처 요령": ["야간에는 인적이 드문 곳 피하기"], "추가 이슈": ["특정 도시 관광객 대상 범죄 증가 보고됨"]},
+        "en_data": {"위험 정보": ["High crime rate in some urban areas", "Law: Beware of gun incidents"], "대처 요령": ["Avoid sparsely populated areas at night"], "추가 이슈": ["Increase in crime targeting tourists in specific cities reported"]}
     },
     "영국": {
-        "도시": ["런던", "맨체스터", "에든버러", "리버풀"],
-        "현지 연락처": {"긴급 전화": "999"},
-        "ko_data": {
-            "위험 정보": ["기차·지하철 지연 가능성", "도심 소매치기 주의"],
-            "대처 요령": ["혼잡 시간대 대비", "귀중품 주의"],
-            "추가 이슈": ["런던 중심가에서 관광객 대상 사기 사례 증가"]
-        },
-        "en_data": {
-            "위험 정보": ["Possibility of train/subway delays", "Beware of pickpocketing in city centers"],
-            "대처 요령": ["Prepare for rush hours", "Guard valuables carefully"],
-            "추가 이슈": ["Increase in scam cases targeting tourists in central London"]
-        }
+        "도시": ["런던", "맨체스터", "에든버러", "리버풀"], "현지 연락처": {"긴급 전화": "999"},
+        "ko_data": {"위험 정보": ["기차·지하철 지연 가능성", "도심 소매치기 주의"], "대처 요령": ["혼잡 시간대 대비", "귀중품 주의"], "추가 이슈": ["런던 중심가에서 관광객 대상 사기 사례 증가"]},
+        "en_data": {"위험 정보": ["Possibility of train/subway delays", "Beware of pickpocketing in city centers"], "대처 요령": ["Prepare for rush hours", "Guard valuables carefully"], "추가 이슈": ["Increase in scam cases targeting tourists in central London"]}
     },
     "호주": {
-        "도시": ["시드니", "멜버른", "브리즈번", "퍼스"],
-        "현지 연락처": {"긴급 전화": "000"},
-        "ko_data": {
-            "위험 정보": ["산불 및 폭우 주의", "환경: 독성 생물 주의"],
-            "대처 요령": ["야생동물과의 접촉 자제"],
-            "추가 이슈": ["해변 이용 시 파도·조류 주의 경고"]
-        },
-        "en_data": {
-            "위험 정보": ["Caution for bushfires and heavy rain", "Environment: Beware of venomous wildlife"],
-            "대처 요령": ["Refrain from contacting wild animals"],
-            "추가 이슈": ["Warning about waves and currents when using beaches"]
-        }
+        "도시": ["시드니", "멜버른", "브리즈번", "퍼스"], "현지 연락처": {"긴급 전화": "000"},
+        "ko_data": {"위험 정보": ["산불 및 폭우 주의", "환경: 독성 생물 주의"], "대처 요령": ["야생동물과의 접촉 자제"], "추가 이슈": ["해변 이용 시 파도·조류 주의 경고"]},
+        "en_data": {"위험 정보": ["Caution for bushfires and heavy rain", "Environment: Beware of venomous wildlife"], "대처 요령": ["Refrain from contacting wild animals"], "추가 이슈": ["Warning about waves and currents when using beaches"]}
     },
     "베트남": {
-        "도시": ["하노이", "호찌민", "다낭", "나트랑"],
-        "현지 연락처": {"긴급 전화": "113 / 115"},
-        "ko_data": {
-            "위험 정보": ["오토바이 교통량 매우 많음", "핸드폰 날치기 주의"],
-            "대처 요령": ["길거리 걸을 때 소지품 보호 철저"],
-            "추가 이슈": ["관광지 밤거리 안전 주의"]
-        },
-        "en_data": {
-            "위험 정보": ["Very high motorcycle traffic", "Beware of mobile phone snatching"],
-            "대처 요령": ["Protect your belongings carefully when walking on the street"],
-            "추가 이슈": ["Caution for safety in tourist night areas"]
-        }
+        "도시": ["하노이", "호찌민", "다낭", "나트랑"], "현지 연락처": {"긴급 전화": "113 / 115"},
+        "ko_data": {"위험 정보": ["오토바이 교통량 매우 많음", "핸드폰 날치기 주의"], "대처 요령": ["길거리 걸을 때 소지품 보호 철저"], "추가 이슈": ["관광지 밤거리 안전 주의"]},
+        "en_data": {"위험 정보": ["Very high motorcycle traffic", "Beware of mobile phone snatching"], "대처 요령": ["Protect your belongings carefully when walking on the street"], "추가 이슈": ["Caution for safety in tourist night areas"]}
     },
     "인도네시아": {
-        "도시": ["발리", "자카르타", "롬복", "욕야카르타"],
-        "현지 연락처": {"긴급 전화": "110 / 118"},
-        "ko_data": {
-            "위험 정보": ["자연재해: 화산 활동 및 쓰나미 가능성", "교통: 무면허 운전 위험"],
-            "대처 요령": ["현지 택시 대신 검증된 교통수단 이용"],
-            "추가 이슈": ["외국인 대상 교통사고 증가 보고됨"]
-        },
-        "en_data": {
-            "위험 정보": ["Natural Disasters: Possibility of volcanic activity and tsunamis", "Traffic: Risk of unlicensed driving"],
-            "대처 요령": ["Use verified transport methods instead of local taxis"],
-            "추가 이슈": ["Increase in traffic accidents involving foreigners reported"]
-        }
+        "도시": ["발리", "자카르타", "롬복", "욕야카르타"], "현지 연락처": {"긴급 전화": "110 / 118"},
+        "ko_data": {"위험 정보": ["자연재해: 화산 활동 및 쓰나미 가능성", "교통: 무면허 운전 위험"], "대처 요령": ["현지 택시 대신 검증된 교통수단 이용"], "추가 이슈": ["외국인 대상 교통사고 증가 보고됨"]},
+        "en_data": {"위험 정보": ["Natural Disasters: Possibility of volcanic activity and tsunamis", "Traffic: Risk of unlicensed driving"], "대처 요령": ["Use verified transport methods instead of local taxis"], "추가 이슈": ["Increase in traffic accidents involving foreigners reported"]}
     },
 }
 
-# --- 고정 환율 데이터 (V10 코드의 데이터 그대로 사용) ---
+# --- 고정 데이터 ---
 exchange_rates = {
-    "한국": ("KRW", 1, "1원 = 1원"),
-    "일본": ("JPY", 0.106, "1원 ≈ 0.106엔"),
-    "태국": ("THB", 0.0228, "1원 ≈ 0.0228바트"),
-    "캄보디아": ("KHR", 2.83, "1원 ≈ 2.83리엘"),
-    "미국": ("USD", 1/1420, "1원 ≈ 0.00070달러"),
-    "영국": ("GBP", 1/1800, "1원 ≈ 0.00056파운드"),
-    "호주": ("AUD", 1/930, "1원 ≈ 0.00108호주달러"),
-    "베트남": ("VND", 18.86, "1원 ≈ 18.86동"),
-    "인도네시아": ("IDR", 11.56, "1원 ≈ 11.56루피아"),
+    "한국": ("KRW", 1, "1원 = 1원"), "일본": ("JPY", 0.106, "1원 ≈ 0.106엔"), "태국": ("THB", 0.0228, "1원 ≈ 0.0228바트"),
+    "캄보디아": ("KHR", 2.83, "1원 ≈ 2.83리엘"), "미국": ("USD", 1/1420, "1원 ≈ 0.00070달러"), "영국": ("GBP", 1/1800, "1원 ≈ 0.00056파운드"),
+    "호주": ("AUD", 1/930, "1원 ≈ 0.00108호주달러"), "베트남": ("VND", 18.86, "1원 ≈ 18.86동"), "인도네시아": ("IDR", 11.56, "1원 ≈ 11.56루피아"),
 }
-
-# 지도 좌표 (V10 코드의 데이터 그대로 사용)
 coords = {
     "서울": (37.5665, 126.9780), "부산": (35.1796, 129.0756), "제주": (33.4996, 126.5312),
     "인천": (37.4563, 126.7052), "대구": (35.8714, 128.6014), "광주": (35.1595, 126.8526),
@@ -234,63 +162,56 @@ coords = {
 }
 
 # --- 다국어 처리 함수 ---
-
 def translate_name(name, lang):
-    """나라/도시 이름을 선택된 언어로 번역합니다."""
     if lang == "en":
         return country_city_translations.get(name, name)
     return name
 
 def get_country_name_list(lang):
-    """현재 언어에 맞는 국가 이름 리스트를 반환합니다."""
     if lang == "en":
         return [translate_name(c, lang) for c in safety_data.keys()]
     return list(safety_data.keys())
 
 def get_city_name_list(country_ko, lang):
-    """한국어 국가 이름에 해당하는 도시 리스트를 현재 언어에 맞게 반환합니다."""
     cities_ko = safety_data.get(country_ko, {}).get("도시", [])
     if lang == "en":
         return [translate_name(city, lang) for city in cities_ko]
     return cities_ko
 
 def get_country_ko_name(country_display_name, lang):
-    """표시되는 국가 이름을 한국어 이름으로 역변환합니다."""
     if lang == "ko":
         return country_display_name
-    
     for ko_name, en_name in country_city_translations.items():
         if en_name == country_display_name and ko_name in safety_data.keys():
             return ko_name
-    return country_display_name 
+    return country_display_name
 
 def get_translated_data(country_ko, data_key, lang):
-    """선택된 언어에 맞는 위험 정보를 가져옵니다."""
     info = safety_data.get(country_ko, {})
-    data_source = info.get(f"{lang}_data", info.get("ko_data", {})) # ko_data를 기본값으로 사용
+    data_source = info.get(f"{lang}_data", info.get("ko_data", {}))
     
-    # 데이터 키를 한국어로 통일하여 접근 (데이터 딕셔너리 내부 키)
+    # 데이터 키 매핑 (내부 데이터 딕셔너리 키)
     ko_key = {
         "risk_info": "위험 정보",
         "tips_info": "대처 요령",
         "recent_issues": "추가 이슈"
     }.get(data_key)
     
-    # 이제 데이터 딕셔너리에서 직접 정보를 가져옵니다.
-    return data_source.get(ko_key, ["정보 없음" if lang == "ko" else "No information available"])
-
+    # 번역된 "정보 없음" 메시지 설정
+    no_info_msg = "정보 없음" if lang == "ko" else "No information available"
+    
+    return data_source.get(ko_key, [no_info_msg])
 
 # --- Google 검색 링크 생성 함수 ---
 def create_google_search_link(query):
     base_url = "https://www.google.com/search?q="
     return base_url + query.replace(" ", "+")
 
-
 # ------------------------------------------------------------------------------------------------------
 # --- Streamlit UI 시작 ---
 # ------------------------------------------------------------------------------------------------------
 
-# 언어 선택
+# 언어 선택 및 전역 변수 설정
 lang_option = st.selectbox(translations["ko"]["lang_select"], ("한국어", "English"), key="lang_choice")
 lang = "ko" if lang_option == "한국어" else "en"
 _ = translations[lang]
@@ -308,7 +229,7 @@ departure = st.date_input(_["departure"], datetime.date.today())
 return_date = st.date_input(_["return"], datetime.date.today() + datetime.timedelta(days=7))
 
 if return_date < departure:
-    st.error("⚠️ " + _["return"] + "이/가 " + _["departure"] + "보다 앞설 수 없습니다." if lang=="ko" else "⚠️ " + _["return"] + " cannot be earlier than " + _["departure"] + ".")
+    st.error(_["error_date"])
 else:
     duration = (return_date - departure).days
     st.write(_["duration_prefix"] + f"{duration}" + _["days_suffix"])
@@ -316,9 +237,8 @@ else:
 st.markdown("---")
 
 # --- 세션 상태 초기화 및 관리 ---
-v10_checklist_items = ["여권/비자 확인", "보험 가입", "비상연락망 저장", "신용카드 분실 신고처 메모"]
-if lang == "en":
-    v10_checklist_items = ["Passport/Visa Check", "Insurance Enrollment", "Save Emergency Contacts", "Note Credit Card Loss Reporting"]
+checklist_items_ko = ["여권/비자 확인", "보험 가입", "비상연락망 저장", "신용카드 분실 신고처 메모"]
+checklist_items_en = ["Passport/Visa Check", "Insurance Enrollment", "Save Emergency Contacts", "Note Credit Card Loss Reporting"]
 
 if "travel_history" not in st.session_state:
     st.session_state.travel_history = []
@@ -326,8 +246,6 @@ if "checklist" not in st.session_state:
     st.session_state.checklist = {} 
 if "report_on" not in st.session_state:
     st.session_state.report_on = False
-
-# 선택된 국가/도시는 한국어 이름으로 저장합니다.
 if "selected_country_ko" not in st.session_state:
     st.session_state.selected_country_ko = list(safety_data.keys())[0]
 if "selected_city_ko" not in st.session_state:
@@ -355,19 +273,11 @@ city_ko = get_country_ko_name(city_display_name, lang)
 
 
 if st.button(_["search_report"], type="primary"):
-    # 여행 기록은 한국어 이름으로 저장
     st.session_state.travel_history.append({
-        "국가": country_ko,
-        "도시": city_ko,
-        "출국일": departure,
-        "귀국일": return_date
+        "국가": country_ko, "도시": city_ko, "출국일": departure, "귀국일": return_date
     })
-    # 체크리스트 항목은 한국어로 저장 (영어 전환 시 번역을 위해)
-    checklist_items_ko = ["여권/비자 확인", "보험 가입", "비상연락망 저장", "신용카드 분실 신고처 메모"]
     if country_ko not in st.session_state.checklist:
-        st.session_state.checklist[country_ko] = {
-            item: False for item in checklist_items_ko
-        }
+        st.session_state.checklist[country_ko] = {item: False for item in checklist_items_ko}
     st.session_state.selected_country_ko = country_ko
     st.session_state.selected_city_ko = city_ko
     st.session_state.report_on = True
@@ -384,101 +294,59 @@ if st.session_state.report_on:
     info = safety_data.get(sel_country_ko, {})
 
     if not info:
-        st.error(f"❌ **{sel_country_display}**에 대한 상세 정보가 없습니다. 목록에서 다른 국가를 선택해 주세요." if lang=="ko" else f"❌ No detailed information available for **{sel_country_display}**. Please select another country from the list.")
+        st.error(f"❌ **{sel_country_display}**" + _["error_no_info"])
         st.stop() 
 
     st.header(f"📋 {sel_country_display} – {sel_city_display}")
     
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        _["risk_info"], 
-        _["tips_info"], 
-        _["recent_issues"], 
-        _["emergency_section"], 
-        _["checklist_section"]
+        _["risk_info"], _["tips_info"], _["recent_issues"], _["emergency_section"], _["checklist_section"]
     ])
     
     # 1. 주요 위험 및 유의사항 (tab1)
     with tab1:
         st.subheader(_["risk_info"])
         risks = get_translated_data(sel_country_ko, "risk_info", lang)
-        for r in risks:
-            st.warning(r)
-
+        for r in risks: st.warning(r)
         st.markdown("---")
-        search_query = f"{sel_country_display} {sel_city_display} 여행 위험"
-        st.link_button(
-            f"⚠️ {sel_city_display} 여행 위험: {_['search_link_btn']}", 
-            create_google_search_link(search_query),
-            use_container_width=True
-        )
+        search_query = f"{sel_country_display} {sel_city_display} Travel Risk" if lang=="en" else f"{sel_country_display} {sel_city_display} 여행 위험"
+        st.link_button(f"⚠️ {sel_city_display} {_['risk_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 2. 대처 요령 (tab2)
     with tab2:
         st.subheader(_["tips_info"])
         tips = get_translated_data(sel_country_ko, "tips_info", lang)
-        for t in tips:
-            st.success(t)
-        
+        for t in tips: st.success(t)
         st.markdown("---")
-        col_call = st.columns(1)[0]
-        with col_call:
-            phone_raw = info["현지 연락처"]["긴급 전화"]
-            phone = phone_raw.split(" / ")[0]
-            st.markdown(f"**{_["call_emergency"].split(" ")[-2]}:** `{phone_raw}`" if lang=="ko" else f"**Emergency Phone Number:** `{phone_raw}`")
-            st.markdown(f"[{_['call_emergency']}](tel:{phone})")
-        
+        phone_raw = info["현지 연락처"]["긴급 전화"]
+        phone = phone_raw.split(" / ")[0]
+        st.markdown(f"**{_['call_emergency'].split(' ')[-2] if lang=='ko' else 'Emergency Phone Number'}:** `{phone_raw}`")
+        st.markdown(f"[{_['call_emergency']}](tel:{phone})")
         st.markdown("---")
-        search_query = f"{sel_country_display} 여행 대처 요령"
-        st.link_button(
-            f"✅ {sel_country_display} 안전 수칙: {_['search_link_btn']}", 
-            create_google_search_link(search_query),
-            use_container_width=True
-        )
+        search_query = f"{sel_country_display} Travel Safety Tips" if lang=="en" else f"{sel_country_display} 여행 안전 수칙"
+        st.link_button(f"✅ {sel_country_display} {_['tips_info'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 3. 최근 위험 이슈 (tab3)
     with tab3:
         st.subheader(_["recent_issues"])
         issues = get_translated_data(sel_country_ko, "recent_issues", lang)
-        for issue in issues:
-            st.info(issue)
-        
+        for issue in issues: st.info(issue)
         st.markdown("---")
-        search_query = f"{sel_country_display} {sel_city_display} 최근 이슈"
-        st.link_button(
-            f"📰 {sel_city_display} 최근 이슈: {_['search_link_btn']}", 
-            create_google_search_link(search_query),
-            use_container_width=True
-        )
+        search_query = f"{sel_country_display} {sel_city_display} Recent Issues" if lang=="en" else f"{sel_country_display} {sel_city_display} 최근 이슈"
+        st.link_button(f"📰 {sel_city_display} {_['recent_issues'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
     # 4. 응급 상황 대처 (tab4)
     with tab4:
         st.subheader(_["emergency_section"])
-
-        phone_raw = info["현지 연락처"]["긴급 전화"]
-        phone = phone_raw.split(" / ")[0]
-
-        st.markdown("### 🚨 " + (_["emergency_section"].split(" ")[-1] if lang=="ko" else "Local Emergency Number"))
         st.error(f"**{phone_raw}**")
-
-        st.markdown(f"[{_['call_emergency']} ({_["call_emergency"].split(" ")[-1] if lang=="ko" else "Connect to Primary Number"})](tel:{phone})")
-
+        st.markdown(f"[{_['call_emergency']} ({_['call_emergency'].split(' ')[-1] if lang=='ko' else 'Connect'})](tel:{phone})")
         st.markdown("---")
-        info_text = "💡 **국가별 맞춤 대처 정보:** 긴급 전화는 **1차적인 연결** 수단입니다. 상황별 상세 대처법은 아래 검색을 통해 확인하세요."
-        if lang == "en":
-            info_text = "💡 **Country-specific Response Info:** Emergency call is the **primary connection** method. Check detailed response tips below."
-        st.info(info_text)
-        
+        st.info(_["info_emergency_tip"])
         st.markdown("#### ⚠️ " + (_["risk_info"].split(" ")[-2] if lang=="ko" else "Key Risks Reference"))
-        for r in risks: # 이미 가져온 번역된 위험 정보 사용
-            st.warning(f"• {r}")
-            
+        for r in risks: st.warning(f"• {r}")
         st.markdown("---")
-        current_search_query = f"{sel_country_display} 여행 긴급 상황 대처"
-        st.link_button(
-            f"🚨 **{sel_country_display}** " + (_["emergency_section"].split(" ")[-1] if lang=="ko" else "Detailed Emergency Response") + f": {_['search_link_btn']}",
-            create_google_search_link(current_search_query),
-            use_container_width=True
-        )
+        current_search_query = f"{sel_country_display} Travel Emergency Response" if lang=="en" else f"{sel_country_display} 여행 긴급 상황 대처"
+        st.link_button(f"🚨 **{sel_country_display}** {_['emergency_section'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(current_search_query), use_container_width=True)
 
     # 5. 여행 전 필수 점검 (tab5)
     with tab5:
@@ -486,10 +354,9 @@ if st.session_state.report_on:
         checklist = st.session_state.checklist[sel_country_ko]
         
         new_checklist_status = {}
-        for ko_item in checklist.keys():
-            # 체크리스트 항목을 현재 언어에 맞게 표시
-            display_item = ko_item if lang == "ko" else v10_checklist_items[checklist_items_ko.index(ko_item)]
-            is_checked = st.checkbox(display_item, checklist[ko_item], key=f"{sel_country_ko}_{ko_item}")
+        for idx, ko_item in enumerate(checklist_items_ko):
+            display_item = ko_item if lang == "ko" else checklist_items_en[idx]
+            is_checked = st.checkbox(display_item, checklist.get(ko_item, False), key=f"{sel_country_ko}_{ko_item}")
             new_checklist_status[ko_item] = is_checked
         
         st.session_state.checklist[sel_country_ko] = new_checklist_status
@@ -498,34 +365,43 @@ if st.session_state.report_on:
         total = len(new_checklist_status)
         
         st.markdown("---")
-        if done < total:
-            st.warning(f"⚠️ {done}/{total} {_["checklist_section"]}")
-        else:
-            st.success(_["complete_success"])
+        if done < total: st.warning(f"⚠️ {done}/{total} {_["checklist_section"]}")
+        else: st.success(_["complete_success"])
             
         st.markdown("---")
-        search_query = f"{sel_country_display} 여행 준비물 체크리스트"
-        st.link_button(
-            f"🧳 " + (_["checklist_section"].split(" ")[-1] if lang=="ko" else "Check Travel Essentials") + f": {_['search_link_btn']}",
-            create_google_search_link(search_query),
-            use_container_width=True
-        )
+        search_query = f"{sel_country_display} Travel Checklist" if lang=="en" else f"{sel_country_display} 여행 준비물 체크리스트"
+        st.link_button(f"🧳 {_['checklist_section'].split(' ')[-1]}: {_['search_link_btn']}", create_google_search_link(search_query), use_container_width=True)
 
 
-    # --- 환율 정보 섹션 (탭 외부로 분리) ---
+    # --- 환율 정보 섹션 (탭 외부) ---
     st.markdown("---")
     st.subheader(_["exchange_rate"])
     if sel_country_ko in exchange_rates:
         code, rate, text = exchange_rates[sel_country_ko]
-        st.metric(f"{sel_country_display} ({code}) {_["exchange_rate"].split(" ")[-2] if lang=="ko" else "Exchange Rate Info"}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
+        st.metric(f"{sel_country_display} ({code}) {_['exchange_rate'].split(' ')[-2] if lang=='ko' else 'Exchange Rate Info'}", text if lang=="ko" else f"1 KRW ≈ {rate:,.4f} {code}")
     else:
-        st.info("해당 국가의 환율 정보가 없습니다." if lang=="ko" else "No exchange rate information for this country.")
+        st.info(_["info_exchange_rate"])
     st.markdown("---")
 
-    # --- 지도 섹션 (탭 외부) ---
+    # --- 지도 섹션 (탭 외부) - 지도 오류 수정 적용 ---
     st.subheader(_["map_section"])
-    lat, lon = coords.get(sel_city_ko, (0, 0))
-    st.map(pd.DataFrame({"lat":[lat],"lon":[lon]}))
+    lat_lon = coords.get(sel_city_ko)
+
+    if lat_lon:
+        lat, lon = lat_lon
+        map_data = pd.DataFrame({"lat": [lat], "lon": [lon]})
+
+        # st.map에 명시적 중심 좌표 및 zoom 레벨 지정 (지도 표시 오류 방지)
+        st.map(
+            map_data, 
+            latitude=lat, 
+            longitude=lon, 
+            zoom=11, 
+            use_container_width=True
+        )
+        st.caption(f"{_['map_coords_caption']} {sel_city_display} (Coordinates: {lat:.4f}, {lon:.4f})")
+    else:
+        st.warning(_["map_error_caption"])
 
     # --- 여행 기록 테이블 ---
     def clear_travel_history():
@@ -536,15 +412,12 @@ if st.session_state.report_on:
     with col_rec_title:
         st.subheader(_["record_section"])
     with col_rec_button:
-        button_text = "🗑️ 나의 여행 기록 초기화" if lang == "ko" else "🗑️ Clear My Travel Records"
-        help_text = "저장된 모든 여행 기록을 삭제합니다." if lang == "ko" else "Deletes all saved travel records."
-        st.button(button_text, on_click=clear_travel_history, help=help_text)
+        st.button(_["btn_clear_record"], on_click=clear_travel_history, help=_["help_clear_record"])
 
     record_label = _["record_section"]
     if st.session_state.travel_history:
         df_history = pd.DataFrame(st.session_state.travel_history)
         
-        # 데이터프레임의 내용을 현재 언어에 맞게 변환
         if lang == "en":
              df_history.columns = ["Country", "City", "Departure Date", "Return Date"]
              df_history["Country"] = df_history["Country"].apply(lambda x: translate_name(x, 'en'))
@@ -552,7 +425,7 @@ if st.session_state.report_on:
 
         st.dataframe(df_history)
     else:
-        st.info(f"{record_label}가/이 없습니다." if lang=="ko" else f"No {record_label.lower()} found.")
+        st.info(f"{record_label}" + _["info_no_record"])
 
 st.markdown("—")
 st.markdown("© 2025 SafeTrip Assistant")
